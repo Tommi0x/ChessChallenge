@@ -1,0 +1,3 @@
+# Use Stockfish compiled to WebAssembly as the Bot, not a hand-written engine
+
+Despite the project being a "chess challenge," we're not writing our own chess-playing engine. We considered a staged hand-rolled bot (random → material eval → minimax → alpha-beta) as the more novel path, but rejected it: it caps out well below real playing strength and puts effort into engine internals instead of the actual product (the ladder, scoring, and UI). Stockfish.wasm runs entirely client-side (no server/cost), and its skill-level setting (0–20) gives a ready-made, well-tested difficulty curve for the Difficulty Tier ladder.
