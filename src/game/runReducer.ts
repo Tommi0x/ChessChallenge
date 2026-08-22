@@ -32,7 +32,8 @@ export function runReducer(state: RunState, event: RunEvent): RunState {
 
   const playerWon = game.status === 'checkmate' && game.winner === 'w';
   if (!playerWon) {
-    return { ...state, game, status: game.status === 'checkmate' ? 'lost' : 'drawn' };
+    const runStatus = game.status === 'checkmate' || game.status === 'timeout' ? 'lost' : 'drawn';
+    return { ...state, game, status: runStatus };
   }
 
   const score = state.score + 1;

@@ -7,11 +7,21 @@ import { createInitialRunState, currentSkillLevel, runReducer } from './game/run
 import type { GameStatus } from './game/gameReducer';
 import type { RunStatus } from './game/runReducer';
 
+const TICK_MS = 1000;
+
 function statusMessage(status: GameStatus, winner: 'w' | 'b' | null): string | null {
   if (status === 'checkmate') return winner === 'w' ? 'Checkmate — you win!' : 'Checkmate — the bot wins.';
   if (status === 'stalemate') return 'Stalemate — the game is drawn.';
   if (status === 'draw') return 'Draw.';
+  if (status === 'timeout') return "Time's up — the bot wins.";
   return null;
+}
+
+function formatClock(ms: number): string {
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
 function runEndMessage(status: RunStatus): string | null {
@@ -50,6 +60,18 @@ function App() {
     };
   }, [game.fen, game.status, game.turn, skillLevel]);
 
+  useEffect(() => {
+    if (game.status !== 'playing' || game.turn !== 'w') return;
+
+    let lastTick = Date.now();
+    const id = setInterval(() => {
+      const now = Date.now();
+      dispatch({ type: 'TICK', deltaMs: now - lastTick });
+      lastTick = now;
+    }, TICK_MS);
+    return () => clearInterval(id);
+  }, [game.status, game.turn]);
+
   function onPieceDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
     if (!targetSquare || game.status !== 'playing' || game.turn !== 'w') return false;
 
@@ -72,6 +94,9 @@ function App() {
       </p>
       {run.status === 'playing' ? (
         <>
+          <p>
+            Clock: <strong>{formatClock(game.clockMs)}</strong>
+          </p>
           <div style={{ width: 'min(90vw, 480px)' }}>
             <Chessboard
               options={{

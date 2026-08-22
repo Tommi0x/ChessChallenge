@@ -68,6 +68,25 @@ describe('runReducer', () => {
     expect(state.score).toBe(1);
   });
 
+  it('the clock running out ends the run as lost, same as any other loss', () => {
+    const state = stateAt(1, createInitialGameState().fen);
+    state.game.clockMs = 500;
+
+    const result = runReducer(state, { type: 'TICK', deltaMs: 1000 });
+
+    expect(result.game.status).toBe('timeout');
+    expect(result.status).toBe('lost');
+    expect(result.score).toBe(1);
+  });
+
+  it('the clock only counts down on the player\'s turn', () => {
+    const withMove = runReducer(createInitialRunState(), { type: 'MOVE', from: 'e2', to: 'e4' });
+
+    const state = runReducer(withMove, { type: 'TICK', deltaMs: 1000 });
+
+    expect(state.game.clockMs).toBe(withMove.game.clockMs);
+  });
+
   it('ignores further events once the run is over', () => {
     const over = runReducer(createInitialRunState(), { type: 'MOVE', from: 'f2', to: 'f3' });
     const ended: RunState = { ...over, status: 'lost' };

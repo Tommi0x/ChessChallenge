@@ -1,27 +1,35 @@
 import { Chess } from 'chess.js';
 
-export type GameStatus = 'playing' | 'checkmate' | 'stalemate' | 'draw';
+export const PLAYER_CLOCK_MS = 5 * 60 * 1000;
+
+export type GameStatus = 'playing' | 'checkmate' | 'stalemate' | 'draw' | 'timeout';
 
 export type GameState = {
   fen: string;
   turn: 'w' | 'b';
   status: GameStatus;
   winner: 'w' | 'b' | null;
+  clockMs: number;
 };
 
-export type GameEvent = {
-  type: 'MOVE';
-  from: string;
-  to: string;
-  promotion?: string;
-};
+export type GameEvent =
+  | { type: 'MOVE'; from: string; to: string; promotion?: string }
+  | { type: 'TICK'; deltaMs: number };
 
 export function createInitialGameState(): GameState {
-  return deriveState(new Chess());
+  return deriveState(new Chess(), PLAYER_CLOCK_MS);
 }
 
 export function gameReducer(state: GameState, event: GameEvent): GameState {
   if (state.status !== 'playing') return state;
+
+  if (event.type === 'TICK') {
+    // Only the player's own clock runs, and only on the player's turn.
+    if (state.turn !== 'w') return state;
+    const clockMs = Math.max(0, state.clockMs - event.deltaMs);
+    if (clockMs === 0) return { ...state, clockMs, status: 'timeout', winner: 'b' };
+    return { ...state, clockMs };
+  }
 
   const chess = new Chess(state.fen);
   try {
@@ -29,10 +37,10 @@ export function gameReducer(state: GameState, event: GameEvent): GameState {
   } catch {
     return state;
   }
-  return deriveState(chess);
+  return deriveState(chess, state.clockMs);
 }
 
-function deriveState(chess: Chess): GameState {
+function deriveState(chess: Chess, clockMs: number): GameState {
   let status: GameStatus = 'playing';
   let winner: GameState['winner'] = null;
 
@@ -46,5 +54,5 @@ function deriveState(chess: Chess): GameState {
     status = 'draw';
   }
 
-  return { fen: chess.fen(), turn: chess.turn(), status, winner };
+  return { fen: chess.fen(), turn: chess.turn(), status, winner, clockMs };
 }
