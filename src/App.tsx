@@ -6,8 +6,12 @@ import type { BotAdapter } from './bot/botAdapter';
 import { createInitialRunState, currentSkillLevel, runReducer } from './game/runReducer';
 import type { GameStatus } from './game/gameReducer';
 import type { RunStatus } from './game/runReducer';
+import { createLocalStoragePersistenceAdapter } from './persistence/persistenceAdapter';
 
 const TICK_MS = 1000;
+
+const isNumber = (value: unknown): value is number => typeof value === 'number';
+const bestScoreAdapter = createLocalStoragePersistenceAdapter<number>('chesschallenge:best-score:v1', isNumber);
 
 function statusMessage(status: GameStatus, winner: 'w' | 'b' | null): string | null {
   if (status === 'checkmate') return winner === 'w' ? 'Checkmate — you win!' : 'Checkmate — the bot wins.';
@@ -32,7 +36,7 @@ function runEndMessage(status: RunStatus): string | null {
 }
 
 function App() {
-  const [run, dispatch] = useReducer(runReducer, undefined, createInitialRunState);
+  const [run, dispatch] = useReducer(runReducer, undefined, () => createInitialRunState(bestScoreAdapter.load() ?? 0));
   const [botError, setBotError] = useState<string | null>(null);
   const botRef = useRef<BotAdapter | null>(null);
   if (botRef.current === null) {
@@ -41,6 +45,10 @@ function App() {
 
   const { game } = run;
   const skillLevel = currentSkillLevel(run);
+
+  useEffect(() => {
+    bestScoreAdapter.save(run.bestScore);
+  }, [run.bestScore]);
 
   useEffect(() => {
     if (game.status !== 'playing' || game.turn !== 'b') return;
@@ -90,7 +98,7 @@ function App() {
     <main style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
       <h1>ChessChallenge</h1>
       <p>
-        Score: <strong>{run.score}</strong>
+        Score: <strong>{run.score}</strong> · Best: <strong>{run.bestScore}</strong>
       </p>
       {run.status === 'playing' ? (
         <>

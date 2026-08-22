@@ -5,10 +5,11 @@ import { createInitialGameState } from './gameReducer';
 const WHITE_MATES_FEN = '6k1/5ppp/8/8/8/8/8/R6K w - - 0 1';
 const STALEMATE_FEN = '7k/5K2/8/6Q1/8/8/8/8 w - - 0 1';
 
-function stateAt(tierIndex: number, fen: string): RunState {
+function stateAt(tierIndex: number, fen: string, bestScore = tierIndex): RunState {
   return {
     tierIndex,
     score: tierIndex,
+    bestScore,
     status: 'playing',
     game: { ...createInitialGameState(), fen, turn: 'w' },
   };
@@ -102,6 +103,28 @@ describe('runReducer', () => {
     const state = runReducer(ended, { type: 'NEW_RUN' });
 
     expect(state).toEqual(createInitialRunState());
+  });
+
+  it('carries the best score forward into a fresh run on NEW_RUN', () => {
+    const ended: RunState = { ...createInitialRunState(9), status: 'lost', score: 4, tierIndex: 4 };
+
+    const state = runReducer(ended, { type: 'NEW_RUN' });
+
+    expect(state).toEqual(createInitialRunState(9));
+  });
+
+  it('raises the best score once the current score exceeds it', () => {
+    const state = runReducer(stateAt(2, WHITE_MATES_FEN, 2), { type: 'MOVE', from: 'a1', to: 'a8' });
+
+    expect(state.score).toBe(3);
+    expect(state.bestScore).toBe(3);
+  });
+
+  it('leaves the best score untouched when the current score does not beat it', () => {
+    const state = runReducer(stateAt(2, WHITE_MATES_FEN, 10), { type: 'MOVE', from: 'a1', to: 'a8' });
+
+    expect(state.score).toBe(3);
+    expect(state.bestScore).toBe(10);
   });
 
   it('maps the current tier to a Stockfish skill level', () => {

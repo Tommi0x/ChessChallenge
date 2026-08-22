@@ -8,14 +8,15 @@ export type RunStatus = 'playing' | 'lost' | 'drawn' | 'ladder-complete';
 export type RunState = {
   tierIndex: number;
   score: number;
+  bestScore: number;
   status: RunStatus;
   game: GameState;
 };
 
 export type RunEvent = GameEvent | { type: 'NEW_RUN' };
 
-export function createInitialRunState(): RunState {
-  return { tierIndex: 0, score: 0, status: 'playing', game: createInitialGameState() };
+export function createInitialRunState(bestScore = 0): RunState {
+  return { tierIndex: 0, score: 0, bestScore, status: 'playing', game: createInitialGameState() };
 }
 
 export function currentSkillLevel(state: RunState): number {
@@ -23,7 +24,7 @@ export function currentSkillLevel(state: RunState): number {
 }
 
 export function runReducer(state: RunState, event: RunEvent): RunState {
-  if (event.type === 'NEW_RUN') return createInitialRunState();
+  if (event.type === 'NEW_RUN') return createInitialRunState(state.bestScore);
   if (state.status !== 'playing') return state;
 
   const game = gameReducer(state.game, event);
@@ -37,9 +38,10 @@ export function runReducer(state: RunState, event: RunEvent): RunState {
   }
 
   const score = state.score + 1;
+  const bestScore = Math.max(state.bestScore, score);
   const nextTierIndex = state.tierIndex + 1;
   if (nextTierIndex >= DIFFICULTY_TIERS.length) {
-    return { ...state, game, score, status: 'ladder-complete' };
+    return { ...state, game, score, bestScore, status: 'ladder-complete' };
   }
-  return { ...state, tierIndex: nextTierIndex, score, status: 'playing', game: createInitialGameState() };
+  return { ...state, tierIndex: nextTierIndex, score, bestScore, status: 'playing', game: createInitialGameState() };
 }
