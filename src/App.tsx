@@ -4,15 +4,17 @@ import type { PieceDropHandlerArgs } from 'react-chessboard';
 import { createStockfishBotAdapter } from './bot/stockfishBotAdapter';
 import type { BotAdapter } from './bot/botAdapter';
 import { createInitialRunState, currentSkillLevel, runReducer } from './game/runReducer';
+import type { GameStatus } from './game/gameReducer';
+import type { RunStatus } from './game/runReducer';
 
-function statusMessage(status: string, winner: 'w' | 'b' | null): string | null {
+function statusMessage(status: GameStatus, winner: 'w' | 'b' | null): string | null {
   if (status === 'checkmate') return winner === 'w' ? 'Checkmate — you win!' : 'Checkmate — the bot wins.';
   if (status === 'stalemate') return 'Stalemate — the game is drawn.';
   if (status === 'draw') return 'Draw.';
   return null;
 }
 
-function runEndMessage(status: string): string | null {
+function runEndMessage(status: RunStatus): string | null {
   if (status === 'ladder-complete') return 'You beat the whole ladder!';
   if (status === 'lost') return 'Run over — the bot won.';
   if (status === 'drawn') return 'Run over — drawn.';

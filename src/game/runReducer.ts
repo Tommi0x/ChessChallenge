@@ -40,5 +40,5 @@ export function runReducer(state: RunState, event: RunEvent): RunState {
   if (nextTierIndex >= DIFFICULTY_TIERS.length) {
     return { ...state, game, score, status: 'ladder-complete' };
   }
-  return { tierIndex: nextTierIndex, score, status: 'playing', game: createInitialGameState() };
+  return { ...state, tierIndex: nextTierIndex, score, status: 'playing', game: createInitialGameState() };
 }
