@@ -7,6 +7,7 @@ import { createInitialRunState, currentSkillLevel, runReducer } from './game/run
 import type { GameStatus } from './game/gameReducer';
 import type { RunStatus } from './game/runReducer';
 import { createLocalStoragePersistenceAdapter } from './persistence/persistenceAdapter';
+import { runEndPresentation } from './runEndPresentation';
 
 const TICK_MS = 1000;
 
@@ -33,6 +34,27 @@ function runEndMessage(status: RunStatus): string | null {
   if (status === 'lost') return 'Run over — the bot won.';
   if (status === 'drawn') return 'Run over — drawn.';
   return null;
+}
+
+type RunEndScreenProps = {
+  status: Exclude<RunStatus, 'playing'>;
+  message: string | null;
+  score: number;
+  onNewRun: () => void;
+};
+
+function RunEndScreen({ status, message, score, onNewRun }: RunEndScreenProps) {
+  const { heading, className } = runEndPresentation(status);
+  return (
+    <div role="alert" className={className}>
+      <h2>{heading}</h2>
+      <p>{message}</p>
+      <p>Final score: {score}</p>
+      <button type="button" onClick={onNewRun}>
+        Start new run
+      </button>
+    </div>
+  );
 }
 
 function App() {
@@ -117,13 +139,12 @@ function App() {
           {message && <p aria-live="polite">{message}</p>}
         </>
       ) : (
-        <div role="alert">
-          <p>{endMessage}</p>
-          <p>Final score: {run.score}</p>
-          <button type="button" onClick={() => dispatch({ type: 'NEW_RUN' })}>
-            Start new run
-          </button>
-        </div>
+        <RunEndScreen
+          status={run.status}
+          message={endMessage}
+          score={run.score}
+          onNewRun={() => dispatch({ type: 'NEW_RUN' })}
+        />
       )}
       {botError && <p role="alert">{botError}</p>}
     </main>

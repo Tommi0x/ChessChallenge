@@ -13,3 +13,15 @@ body {
   justify-content: center;
   padding: 2rem 1rem;
 }
+
+.run-end {
+  border: 2px solid currentColor;
+  border-radius: 0.5rem;
+  padding: 1rem 1.5rem;
+}
+
+.run-end--ladder-complete {
+  color: #7a5b00;
+  background: linear-gradient(135deg, #fff4cc, #ffd966);
+  border-color: #d4a017;
+}
