@@ -153,4 +153,12 @@ describe('runReducer', () => {
     expect(isRunState({ ...createInitialRunState(), tierIndex: -1 })).toBe(false);
     expect(isRunState({ ...createInitialRunState(), tierIndex: DIFFICULTY_TIERS.length })).toBe(false);
   });
+
+  it('rejects a run state whose status disagrees with its game status', () => {
+    const playing = createInitialRunState();
+    expect(isRunState({ ...playing, status: 'lost' })).toBe(false);
+    expect(
+      isRunState({ ...playing, game: { ...playing.game, status: 'timeout', winner: 'b' } }),
+    ).toBe(false);
+  });
 });

@@ -121,4 +121,10 @@ describe('gameReducer', () => {
     expect(isGameState({ ...createInitialGameState(), status: 'bogus' })).toBe(false);
     expect(isGameState({ ...createInitialGameState(), clockMs: 'not a number' })).toBe(false);
   });
+
+  it('rejects a non-finite or negative clock', () => {
+    expect(isGameState({ ...createInitialGameState(), clockMs: Number.NaN })).toBe(false);
+    expect(isGameState({ ...createInitialGameState(), clockMs: -1 })).toBe(false);
+    expect(isGameState({ ...createInitialGameState(), clockMs: Infinity })).toBe(false);
+  });
 });

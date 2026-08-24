@@ -28,15 +28,19 @@ const RUN_STATUSES: readonly RunStatus[] = ['playing', 'lost', 'drawn', 'ladder-
 export function isRunState(value: unknown): value is RunState {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
-  return (
-    typeof v.tierIndex === 'number' &&
-    v.tierIndex >= 0 &&
-    v.tierIndex < DIFFICULTY_TIERS.length &&
-    typeof v.score === 'number' &&
-    typeof v.bestScore === 'number' &&
-    RUN_STATUSES.includes(v.status as RunStatus) &&
-    isGameState(v.game)
-  );
+  if (
+    typeof v.tierIndex !== 'number' ||
+    v.tierIndex < 0 ||
+    v.tierIndex >= DIFFICULTY_TIERS.length ||
+    typeof v.score !== 'number' ||
+    typeof v.bestScore !== 'number' ||
+    !RUN_STATUSES.includes(v.status as RunStatus) ||
+    !isGameState(v.game)
+  ) {
+    return false;
+  }
+  // A run and its inner game must agree on whether play is still in progress.
+  return (v.status === 'playing') === (v.game.status === 'playing');
 }
 
 export function runReducer(state: RunState, event: RunEvent): RunState {

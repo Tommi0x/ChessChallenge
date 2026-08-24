@@ -9,6 +9,7 @@ vi.mock('./bot/stockfishBotAdapter', () => ({
 import App from './App';
 
 const RUN_STATE_KEY = 'chesschallenge:run-state:v1';
+const BEST_SCORE_KEY = 'chesschallenge:best-score:v1';
 
 beforeEach(() => {
   localStorage.clear();
@@ -33,8 +34,24 @@ describe('App', () => {
     expect(screen.getByText(/Score:/).textContent).toBe('Score: 2 · Best: 3');
   });
 
+  it('uses the higher of the two persisted best scores, in case another tab raised it', () => {
+    const saved = { ...createInitialRunState(3), tierIndex: 2, score: 2 };
+    localStorage.setItem(RUN_STATE_KEY, JSON.stringify(saved));
+    localStorage.setItem(BEST_SCORE_KEY, JSON.stringify(7));
+
+    render(<App />);
+
+    expect(screen.getByText(/Score:/).textContent).toBe('Score: 2 · Best: 7');
+  });
+
   it('starting a new run clears the previous run snapshot', () => {
-    const saved = { ...createInitialRunState(), status: 'lost' as const, score: 4 };
+    const initial = createInitialRunState();
+    const saved = {
+      ...initial,
+      status: 'lost' as const,
+      score: 4,
+      game: { ...initial.game, status: 'timeout' as const, winner: 'b' as const },
+    };
     localStorage.setItem(RUN_STATE_KEY, JSON.stringify(saved));
 
     render(<App />);

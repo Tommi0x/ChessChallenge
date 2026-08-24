@@ -50,7 +50,9 @@ export function isGameState(value: unknown): value is GameState {
     (v.turn === 'w' || v.turn === 'b') &&
     GAME_STATUSES.includes(v.status as GameStatus) &&
     (v.winner === 'w' || v.winner === 'b' || v.winner === null) &&
-    typeof v.clockMs === 'number'
+    typeof v.clockMs === 'number' &&
+    Number.isFinite(v.clockMs) &&
+    v.clockMs >= 0
   );
 }
 

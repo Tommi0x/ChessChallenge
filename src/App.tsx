@@ -59,11 +59,13 @@ function RunEndScreen({ status, message, score, onNewRun }: RunEndScreenProps) {
 }
 
 function App() {
-  const [run, dispatch] = useReducer(
-    runReducer,
-    undefined,
-    () => runStateAdapter.load() ?? createInitialRunState(bestScoreAdapter.load() ?? 0),
-  );
+  const [run, dispatch] = useReducer(runReducer, undefined, () => {
+    const savedBest = bestScoreAdapter.load() ?? 0;
+    const savedRun = runStateAdapter.load();
+    if (!savedRun) return createInitialRunState(savedBest);
+    // Reconcile against the standalone best-score key in case another tab raised it more recently.
+    return { ...savedRun, bestScore: Math.max(savedRun.bestScore, savedBest) };
+  });
   const [botError, setBotError] = useState<string | null>(null);
   const botRef = useRef<BotAdapter | null>(null);
   if (botRef.current === null) {
@@ -77,7 +79,13 @@ function App() {
     bestScoreAdapter.save(run.bestScore);
   }, [run.bestScore]);
 
+  const lastSavedKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
+    // Snapshot after moves/run transitions only, not every clock TICK (ADR 0003).
+    const key = `${run.game.fen}|${run.game.status}|${run.status}|${run.tierIndex}`;
+    if (lastSavedKeyRef.current === key) return;
+    lastSavedKeyRef.current = key;
     runStateAdapter.save(run);
   }, [run]);
 
