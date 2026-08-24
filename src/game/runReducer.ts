@@ -1,4 +1,4 @@
-import { createInitialGameState, gameReducer, type GameEvent, type GameState } from './gameReducer';
+import { createInitialGameState, gameReducer, isGameState, type GameEvent, type GameState } from './gameReducer';
 
 // Skill level (0-20) for each rung of the ladder, played in order.
 export const DIFFICULTY_TIERS: readonly number[] = [0, 2, 4, 6, 8, 10, 12, 14, 17, 20];
@@ -21,6 +21,22 @@ export function createInitialRunState(bestScore = 0): RunState {
 
 export function currentSkillLevel(state: RunState): number {
   return DIFFICULTY_TIERS[state.tierIndex];
+}
+
+const RUN_STATUSES: readonly RunStatus[] = ['playing', 'lost', 'drawn', 'ladder-complete'];
+
+export function isRunState(value: unknown): value is RunState {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.tierIndex === 'number' &&
+    v.tierIndex >= 0 &&
+    v.tierIndex < DIFFICULTY_TIERS.length &&
+    typeof v.score === 'number' &&
+    typeof v.bestScore === 'number' &&
+    RUN_STATUSES.includes(v.status as RunStatus) &&
+    isGameState(v.game)
+  );
 }
 
 export function runReducer(state: RunState, event: RunEvent): RunState {

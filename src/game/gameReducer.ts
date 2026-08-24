@@ -40,6 +40,20 @@ export function gameReducer(state: GameState, event: GameEvent): GameState {
   return deriveState(chess, state.clockMs);
 }
 
+const GAME_STATUSES: readonly GameStatus[] = ['playing', 'checkmate', 'stalemate', 'draw', 'timeout'];
+
+export function isGameState(value: unknown): value is GameState {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.fen === 'string' &&
+    (v.turn === 'w' || v.turn === 'b') &&
+    GAME_STATUSES.includes(v.status as GameStatus) &&
+    (v.winner === 'w' || v.winner === 'b' || v.winner === null) &&
+    typeof v.clockMs === 'number'
+  );
+}
+
 function deriveState(chess: Chess, clockMs: number): GameState {
   let status: GameStatus = 'playing';
   let winner: GameState['winner'] = null;

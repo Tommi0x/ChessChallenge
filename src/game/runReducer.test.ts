@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createInitialRunState, currentSkillLevel, DIFFICULTY_TIERS, runReducer, type RunState } from './runReducer';
+import {
+  createInitialRunState,
+  currentSkillLevel,
+  DIFFICULTY_TIERS,
+  isRunState,
+  runReducer,
+  type RunState,
+} from './runReducer';
 import { createInitialGameState } from './gameReducer';
 
 const WHITE_MATES_FEN = '6k1/5ppp/8/8/8/8/8/R6K w - - 0 1';
@@ -130,5 +137,20 @@ describe('runReducer', () => {
   it('maps the current tier to a Stockfish skill level', () => {
     expect(currentSkillLevel(createInitialRunState())).toBe(DIFFICULTY_TIERS[0]);
     expect(currentSkillLevel(stateAt(3, WHITE_MATES_FEN))).toBe(DIFFICULTY_TIERS[3]);
+  });
+
+  it('recognizes a well-formed run state', () => {
+    expect(isRunState(createInitialRunState())).toBe(true);
+  });
+
+  it('rejects malformed run state', () => {
+    expect(isRunState(null)).toBe(false);
+    expect(isRunState({ ...createInitialRunState(), status: 'bogus' })).toBe(false);
+    expect(isRunState({ ...createInitialRunState(), game: null })).toBe(false);
+  });
+
+  it('rejects a run state with a tierIndex outside the ladder', () => {
+    expect(isRunState({ ...createInitialRunState(), tierIndex: -1 })).toBe(false);
+    expect(isRunState({ ...createInitialRunState(), tierIndex: DIFFICULTY_TIERS.length })).toBe(false);
   });
 });

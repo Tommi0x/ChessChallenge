@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createInitialGameState, gameReducer, PLAYER_CLOCK_MS } from './gameReducer';
+import { createInitialGameState, gameReducer, isGameState, PLAYER_CLOCK_MS } from './gameReducer';
 
 describe('gameReducer', () => {
   it('starts a new game with White to move', () => {
@@ -110,5 +110,15 @@ describe('gameReducer', () => {
     const state = gameReducer(finished, { type: 'TICK', deltaMs: 1000 });
 
     expect(state).toEqual(finished);
+  });
+
+  it('recognizes a well-formed game state', () => {
+    expect(isGameState(createInitialGameState())).toBe(true);
+  });
+
+  it('rejects malformed game state', () => {
+    expect(isGameState(null)).toBe(false);
+    expect(isGameState({ ...createInitialGameState(), status: 'bogus' })).toBe(false);
+    expect(isGameState({ ...createInitialGameState(), clockMs: 'not a number' })).toBe(false);
   });
 });

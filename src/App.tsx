@@ -3,7 +3,7 @@ import { Chessboard } from 'react-chessboard';
 import type { PieceDropHandlerArgs } from 'react-chessboard';
 import { createStockfishBotAdapter } from './bot/stockfishBotAdapter';
 import type { BotAdapter } from './bot/botAdapter';
-import { createInitialRunState, currentSkillLevel, runReducer } from './game/runReducer';
+import { createInitialRunState, currentSkillLevel, isRunState, runReducer, type RunState } from './game/runReducer';
 import type { GameStatus } from './game/gameReducer';
 import type { RunStatus } from './game/runReducer';
 import { createLocalStoragePersistenceAdapter } from './persistence/persistenceAdapter';
@@ -13,6 +13,7 @@ const TICK_MS = 1000;
 
 const isNumber = (value: unknown): value is number => typeof value === 'number';
 const bestScoreAdapter = createLocalStoragePersistenceAdapter<number>('chesschallenge:best-score:v1', isNumber);
+const runStateAdapter = createLocalStoragePersistenceAdapter<RunState>('chesschallenge:run-state:v1', isRunState);
 
 function statusMessage(status: GameStatus, winner: 'w' | 'b' | null): string | null {
   if (status === 'checkmate') return winner === 'w' ? 'Checkmate — you win!' : 'Checkmate — the bot wins.';
@@ -58,7 +59,11 @@ function RunEndScreen({ status, message, score, onNewRun }: RunEndScreenProps) {
 }
 
 function App() {
-  const [run, dispatch] = useReducer(runReducer, undefined, () => createInitialRunState(bestScoreAdapter.load() ?? 0));
+  const [run, dispatch] = useReducer(
+    runReducer,
+    undefined,
+    () => runStateAdapter.load() ?? createInitialRunState(bestScoreAdapter.load() ?? 0),
+  );
   const [botError, setBotError] = useState<string | null>(null);
   const botRef = useRef<BotAdapter | null>(null);
   if (botRef.current === null) {
@@ -71,6 +76,10 @@ function App() {
   useEffect(() => {
     bestScoreAdapter.save(run.bestScore);
   }, [run.bestScore]);
+
+  useEffect(() => {
+    runStateAdapter.save(run);
+  }, [run]);
 
   useEffect(() => {
     if (game.status !== 'playing' || game.turn !== 'b') return;
