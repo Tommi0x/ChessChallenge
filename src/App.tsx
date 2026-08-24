@@ -126,17 +126,17 @@ function App() {
   const endMessage = runEndMessage(run.status);
 
   return (
-    <main style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+    <main className="app">
       <h1>ChessChallenge</h1>
-      <p>
+      <p className="stat-pill">
         Score: <strong>{run.score}</strong> · Best: <strong>{run.bestScore}</strong>
       </p>
       {run.status === 'playing' ? (
         <>
-          <p>
+          <p className="stat-pill">
             Clock: <strong>{formatClock(game.clockMs)}</strong>
           </p>
-          <div style={{ width: 'min(90vw, 480px)' }}>
+          <div className="board-wrap">
             <Chessboard
               options={{
                 position: game.fen,
@@ -145,7 +145,11 @@ function App() {
               }}
             />
           </div>
-          {message && <p aria-live="polite">{message}</p>}
+          {message && (
+            <p className="status-message" aria-live="polite">
+              {message}
+            </p>
+          )}
         </>
       ) : (
         <RunEndScreen
@@ -155,7 +159,11 @@ function App() {
           onNewRun={() => dispatch({ type: 'NEW_RUN' })}
         />
       )}
-      {botError && <p role="alert">{botError}</p>}
+      {botError && (
+        <p className="error-message" role="alert">
+          {botError}
+        </p>
+      )}
     </main>
   );
 }

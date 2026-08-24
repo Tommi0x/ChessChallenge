@@ -14,14 +14,92 @@ body {
   padding: 2rem 1rem;
 }
 
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: min(100%, 480px);
+}
+
+.app h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  text-align: center;
+}
+
+.stat-pill {
+  margin: 0;
+  background: light-dark(#f0f0f0, #2a2a2a);
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.board-wrap {
+  width: min(90vw, 480px);
+}
+
+.status-message {
+  text-align: center;
+  font-weight: 500;
+}
+
+.error-message {
+  text-align: center;
+  color: light-dark(#b00020, #ff6b6b);
+}
+
+button {
+  font: inherit;
+  padding: 0.6rem 1.4rem;
+  border: 1px solid light-dark(#ccc, #555);
+  border-radius: 0.5rem;
+  background: light-dark(#f0f0f0, #2a2a2a);
+  cursor: pointer;
+}
+
+button:hover {
+  background: light-dark(#e0e0e0, #383838);
+}
+
 .run-end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
   border: 2px solid currentColor;
   border-radius: 0.5rem;
-  padding: 1rem 1.5rem;
+  padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.run-end h2 {
+  margin: 0;
+}
+
+.run-end p {
+  margin: 0;
+}
+
+.run-end button {
+  margin-top: 0.5rem;
 }
 
 .run-end--ladder-complete {
   color: #7a5b00;
   background: linear-gradient(135deg, #fff4cc, #ffd966);
   border-color: #d4a017;
+}
+
+@media (max-width: 420px) {
+  #root {
+    padding: 1.25rem 0.75rem;
+  }
+
+  .run-end {
+    padding: 1.25rem 1rem;
+  }
 }
