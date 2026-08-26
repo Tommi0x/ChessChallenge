@@ -28,7 +28,9 @@ describe('gameReducer', () => {
 
     const state = gameReducer(initial, { type: 'MOVE', from: 'e2', to: 'e5' });
 
-    expect(state).toEqual(initial);
+    // Identity, not deep equality: callers short-circuit on `next === prev` to
+    // detect a rejected move (App's onPieceDrop, runReducer's no-op guard).
+    expect(state).toBe(initial);
   });
 
   it('detects checkmate and records the winner', () => {
@@ -76,7 +78,7 @@ describe('gameReducer', () => {
 
     const state = gameReducer(finished, { type: 'MOVE', from: 'a1', to: 'a2' });
 
-    expect(state).toEqual(finished);
+    expect(state).toBe(finished);
   });
 
   it('counts down the clock on a TICK while it is the player\'s turn', () => {
@@ -91,7 +93,7 @@ describe('gameReducer', () => {
 
     const next = gameReducer(state, { type: 'TICK', deltaMs: 1000 });
 
-    expect(next).toEqual(state);
+    expect(next).toBe(state);
   });
 
   it('running out of time ends the game as a timeout loss for the player', () => {
@@ -109,7 +111,7 @@ describe('gameReducer', () => {
 
     const state = gameReducer(finished, { type: 'TICK', deltaMs: 1000 });
 
-    expect(state).toEqual(finished);
+    expect(state).toBe(finished);
   });
 
   it('recognizes a well-formed game state', () => {
