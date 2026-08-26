@@ -1,7 +1,15 @@
+import { Chess } from 'chess.js';
 import type { BotAdapter, BotMove } from './botAdapter';
 
 const MOVE_TIME_MS = 500;
 const RESPONSE_TIMEOUT_MS = 5000;
+
+function randomLegalMove(fen: string): BotMove | null {
+  const moves = new Chess(fen).moves({ verbose: true });
+  if (moves.length === 0) return null;
+  const move = moves[Math.floor(Math.random() * moves.length)];
+  return { from: move.from, to: move.to, promotion: move.promotion };
+}
 
 function parseUciMove(uci: string): BotMove {
   return {
@@ -27,8 +35,16 @@ export function createStockfishBotAdapter(): BotAdapter {
   });
 
   return {
-    async getMove(fen, skillLevel) {
+    async getMove(fen, tier) {
       await ready;
+
+      // Below the engine's UCI_Elo floor, a starved search still snaps up hanging
+      // pieces; the random move is what makes the low rungs feel like a beginner.
+      if (tier.blunderChance !== undefined && Math.random() < tier.blunderChance) {
+        const blunder = randomLegalMove(fen);
+        if (blunder) return blunder;
+      }
+
       const id = ++requestId;
 
       return new Promise((resolve, reject) => {
@@ -63,9 +79,12 @@ export function createStockfishBotAdapter(): BotAdapter {
         worker.addEventListener('message', onMessage);
         worker.addEventListener('error', onError);
 
-        worker.postMessage(`setoption name Skill Level value ${skillLevel}`);
+        // Skill Level stays at full; UCI_LimitStrength is what governs when it's on.
+        worker.postMessage('setoption name Skill Level value 20');
+        worker.postMessage(`setoption name UCI_LimitStrength value ${tier.nodes === undefined}`);
+        if (tier.nodes === undefined) worker.postMessage(`setoption name UCI_Elo value ${tier.elo}`);
         worker.postMessage(`position fen ${fen}`);
-        worker.postMessage(`go movetime ${MOVE_TIME_MS}`);
+        worker.postMessage(tier.nodes === undefined ? `go movetime ${MOVE_TIME_MS}` : `go nodes ${tier.nodes}`);
       });
     },
   };

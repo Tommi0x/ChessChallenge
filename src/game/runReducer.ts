@@ -1,7 +1,21 @@
 import { createInitialGameState, gameReducer, isGameState, type GameEvent, type GameState } from './gameReducer';
+import type { DifficultyTier } from '../bot/botAdapter';
 
-// Skill level (0-20) for each rung of the ladder, played in order.
-export const DIFFICULTY_TIERS: readonly number[] = [0, 2, 4, 6, 8, 10, 12, 14, 17, 20];
+// The ladder, played in order. Targets 200-2000 Elo in even 200-point steps.
+// The bottom six rungs sit below the engine's UCI_Elo floor and are approximated
+// by search budget + blunder rate, so their Elo is an aim, not a measurement.
+export const DIFFICULTY_TIERS: readonly DifficultyTier[] = [
+  { elo: 200, nodes: 1, blunderChance: 0.5 },
+  { elo: 400, nodes: 2, blunderChance: 0.35 },
+  { elo: 600, nodes: 5, blunderChance: 0.25 },
+  { elo: 800, nodes: 15, blunderChance: 0.15 },
+  { elo: 1000, nodes: 50, blunderChance: 0.08 },
+  { elo: 1200, nodes: 200, blunderChance: 0.03 },
+  { elo: 1400 },
+  { elo: 1600 },
+  { elo: 1800 },
+  { elo: 2000 },
+];
 
 export type RunStatus = 'playing' | 'lost' | 'drawn' | 'ladder-complete';
 
@@ -19,7 +33,7 @@ export function createInitialRunState(bestScore = 0): RunState {
   return { tierIndex: 0, score: 0, bestScore, status: 'playing', game: createInitialGameState() };
 }
 
-export function currentSkillLevel(state: RunState): number {
+export function currentTier(state: RunState): DifficultyTier {
   return DIFFICULTY_TIERS[state.tierIndex];
 }
 
