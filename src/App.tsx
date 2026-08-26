@@ -3,7 +3,7 @@ import { Chessboard } from 'react-chessboard';
 import type { PieceDropHandlerArgs } from 'react-chessboard';
 import { createStockfishBotAdapter } from './bot/stockfishBotAdapter';
 import type { BotAdapter } from './bot/botAdapter';
-import { createInitialRunState, currentSkillLevel, isRunState, runReducer, type RunState } from './game/runReducer';
+import { createInitialRunState, currentTier, isRunState, runReducer, type RunState } from './game/runReducer';
 import type { GameStatus } from './game/gameReducer';
 import type { RunStatus } from './game/runReducer';
 import { createLocalStoragePersistenceAdapter } from './persistence/persistenceAdapter';
@@ -73,7 +73,7 @@ function App() {
   }
 
   const { game } = run;
-  const skillLevel = currentSkillLevel(run);
+  const tier = currentTier(run);
 
   useEffect(() => {
     bestScoreAdapter.save(run.bestScore);
@@ -93,7 +93,7 @@ function App() {
     if (game.status !== 'playing' || game.turn !== 'b') return;
 
     let cancelled = false;
-    botRef.current!.getMove(game.fen, skillLevel).then(
+    botRef.current!.getMove(game.fen, tier).then(
       (move) => {
         if (!cancelled) dispatch({ type: 'MOVE', ...move });
       },
@@ -105,7 +105,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [game.fen, game.status, game.turn, skillLevel]);
+  }, [game.fen, game.status, game.turn, tier]);
 
   useEffect(() => {
     if (game.status !== 'playing' || game.turn !== 'w') return;

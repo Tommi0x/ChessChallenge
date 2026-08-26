@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createInitialRunState,
-  currentSkillLevel,
+  currentTier,
   DIFFICULTY_TIERS,
   isRunState,
   runReducer,
@@ -92,7 +92,8 @@ describe('runReducer', () => {
 
     const state = runReducer(withMove, { type: 'TICK', deltaMs: 1000 });
 
-    expect(state.game.clockMs).toBe(withMove.game.clockMs);
+    // A no-op event must hand back the very same state, not an equal copy.
+    expect(state).toBe(withMove);
   });
 
   it('ignores further events once the run is over', () => {
@@ -101,7 +102,7 @@ describe('runReducer', () => {
 
     const state = runReducer(ended, { type: 'MOVE', from: 'e7', to: 'e5' });
 
-    expect(state).toEqual(ended);
+    expect(state).toBe(ended);
   });
 
   it('starts a brand new run on NEW_RUN, even after the run ended', () => {
@@ -134,9 +135,9 @@ describe('runReducer', () => {
     expect(state.bestScore).toBe(10);
   });
 
-  it('maps the current tier to a Stockfish skill level', () => {
-    expect(currentSkillLevel(createInitialRunState())).toBe(DIFFICULTY_TIERS[0]);
-    expect(currentSkillLevel(stateAt(3, WHITE_MATES_FEN))).toBe(DIFFICULTY_TIERS[3]);
+  it('maps the tier index to its difficulty settings', () => {
+    expect(currentTier(createInitialRunState())).toBe(DIFFICULTY_TIERS[0]);
+    expect(currentTier(stateAt(3, WHITE_MATES_FEN))).toBe(DIFFICULTY_TIERS[3]);
   });
 
   it('recognizes a well-formed run state', () => {
