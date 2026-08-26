@@ -12,12 +12,16 @@ _Avoid_: Session, playthrough
 One chess match against the Bot at a single Difficulty Tier, played with a 5-minute clock for the player. The player is always White.
 _Avoid_: Match, round
 
+**Ladder**:
+The fixed, ordered list of Difficulty Tiers a Run climbs, from the easiest rung to the hardest. Owns each rung's target Elo and how the engine is weakened to reach it.
+_Avoid_: Levels, tier list
+
 **Difficulty Tier**:
 One rung of the ladder, mapped to a specific Stockfish skill level. Tiers are played in increasing order within a Run.
 _Avoid_: Level (ambiguous with UI/game level), difficulty (alone)
 
 **Score**:
-The number of Difficulty Tiers won during the current Run.
+Points accumulated during the current Run. Each Game won is worth `(tier number) * 100`, plus up to half that again scaled by the share of the clock still unspent when the Game ended — so harder rungs and faster wins both pay more, and two players who fall at the same rung can still be separated.
 _Avoid_: Points
 
 **Best Score**:

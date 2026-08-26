@@ -40,7 +40,7 @@ export function createStockfishBotAdapter(): BotAdapter {
 
       // Below the engine's UCI_Elo floor, a starved search still snaps up hanging
       // pieces; the random move is what makes the low rungs feel like a beginner.
-      if (tier.blunderChance !== undefined && Math.random() < tier.blunderChance) {
+      if (tier.kind === 'starved' && Math.random() < tier.blunderChance) {
         const blunder = randomLegalMove(fen);
         if (blunder) return blunder;
       }
@@ -81,10 +81,10 @@ export function createStockfishBotAdapter(): BotAdapter {
 
         // Skill Level stays at full; UCI_LimitStrength is what governs when it's on.
         worker.postMessage('setoption name Skill Level value 20');
-        worker.postMessage(`setoption name UCI_LimitStrength value ${tier.nodes === undefined}`);
-        if (tier.nodes === undefined) worker.postMessage(`setoption name UCI_Elo value ${tier.elo}`);
+        worker.postMessage(`setoption name UCI_LimitStrength value ${tier.kind === 'calibrated'}`);
+        if (tier.kind === 'calibrated') worker.postMessage(`setoption name UCI_Elo value ${tier.elo}`);
         worker.postMessage(`position fen ${fen}`);
-        worker.postMessage(tier.nodes === undefined ? `go movetime ${MOVE_TIME_MS}` : `go nodes ${tier.nodes}`);
+        worker.postMessage(tier.kind === 'calibrated' ? `go movetime ${MOVE_TIME_MS}` : `go nodes ${tier.nodes}`);
       });
     },
   };

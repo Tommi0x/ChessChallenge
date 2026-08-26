@@ -1,21 +1,12 @@
-import { createInitialGameState, gameReducer, isGameState, type GameEvent, type GameState } from './gameReducer';
-import type { DifficultyTier } from '../bot/botAdapter';
-
-// The ladder, played in order. Targets 200-2000 Elo in even 200-point steps.
-// The bottom six rungs sit below the engine's UCI_Elo floor and are approximated
-// by search budget + blunder rate, so their Elo is an aim, not a measurement.
-export const DIFFICULTY_TIERS: readonly DifficultyTier[] = [
-  { elo: 200, nodes: 1, blunderChance: 0.5 },
-  { elo: 400, nodes: 2, blunderChance: 0.35 },
-  { elo: 600, nodes: 5, blunderChance: 0.25 },
-  { elo: 800, nodes: 15, blunderChance: 0.15 },
-  { elo: 1000, nodes: 50, blunderChance: 0.08 },
-  { elo: 1200, nodes: 200, blunderChance: 0.03 },
-  { elo: 1400 },
-  { elo: 1600 },
-  { elo: 1800 },
-  { elo: 2000 },
-];
+import {
+  createInitialGameState,
+  gameReducer,
+  isGameState,
+  PLAYER_CLOCK_MS,
+  type GameEvent,
+  type GameState,
+} from './gameReducer';
+import { DIFFICULTY_TIERS } from './ladder';
 
 export type RunStatus = 'playing' | 'lost' | 'drawn' | 'ladder-complete';
 
@@ -33,8 +24,12 @@ export function createInitialRunState(bestScore = 0): RunState {
   return { tierIndex: 0, score: 0, bestScore, status: 'playing', game: createInitialGameState() };
 }
 
-export function currentTier(state: RunState): DifficultyTier {
-  return DIFFICULTY_TIERS[state.tierIndex];
+// Points for winning one Game: harder rungs are worth more, and half the rung's
+// value is scaled by how much of the 5-minute clock is left, so a fast win beats
+// a grind on the same bot.
+export function gamePoints(tierIndex: number, clockMs: number): number {
+  const base = (tierIndex + 1) * 100;
+  return base + Math.round((base / 2) * (clockMs / PLAYER_CLOCK_MS));
 }
 
 const RUN_STATUSES: readonly RunStatus[] = ['playing', 'lost', 'drawn', 'ladder-complete'];
@@ -71,7 +66,7 @@ export function runReducer(state: RunState, event: RunEvent): RunState {
     return { ...state, game, status: runStatus };
   }
 
-  const score = state.score + 1;
+  const score = state.score + gamePoints(state.tierIndex, game.clockMs);
   const bestScore = Math.max(state.bestScore, score);
   const nextTierIndex = state.tierIndex + 1;
   if (nextTierIndex >= DIFFICULTY_TIERS.length) {
