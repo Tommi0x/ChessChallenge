@@ -141,6 +141,25 @@ describe('runReducer', () => {
     expect(gamePoints(5, PLAYER_CLOCK_MS)).toBeGreaterThan(gamePoints(2, PLAYER_CLOCK_MS));
   });
 
+  it('ranks depth over speed: the best possible n-bot run scores below the worst (n+1)-bot run', () => {
+    // The whole point of the flat, sub-rung speed bonus. Checked across the whole
+    // ladder, since the old tier-scaled bonus only broke past the fourth rung.
+    const fastest = (n: number) =>
+      Array.from({ length: n }, (_, i) => gamePoints(i, PLAYER_CLOCK_MS)).reduce((a, b) => a + b, 0);
+    const slowest = (n: number) =>
+      Array.from({ length: n }, (_, i) => gamePoints(i, 0)).reduce((a, b) => a + b, 0);
+
+    for (let n = 1; n < DIFFICULTY_TIERS.length; n++) {
+      expect(fastest(n)).toBeLessThan(slowest(n + 1));
+    }
+  });
+
+  it('records the points the last won game paid, for the UI to show', () => {
+    const state = runReducer(stateAt(2, WHITE_MATES_FEN), { type: 'MOVE', from: 'a1', to: 'a8' });
+    expect(state.lastGamePoints).toBe(gamePoints(2, PLAYER_CLOCK_MS));
+    expect(createInitialRunState().lastGamePoints).toBeUndefined();
+  });
+
   it('accumulates the time bonus of every won game, not just the last one', () => {
     // Win tier 0 with 4 of 5 minutes left, then tier 1 with 1 minute left.
     let state: RunState = { ...stateAt(0, WHITE_MATES_FEN, 0), score: 0 };

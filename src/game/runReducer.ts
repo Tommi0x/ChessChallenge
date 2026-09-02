@@ -16,6 +16,8 @@ export type RunState = {
   bestScore: number;
   status: RunStatus;
   game: GameState;
+  /** Points earned by the most recent Game won, so the UI can show what a win paid. */
+  lastGamePoints?: number;
 };
 
 export type RunEvent = GameEvent | { type: 'NEW_RUN' };
@@ -24,12 +26,18 @@ export function createInitialRunState(bestScore = 0): RunState {
   return { tierIndex: 0, score: 0, bestScore, status: 'playing', game: createInitialGameState() };
 }
 
-// Points for winning one Game: harder rungs are worth more, and half the rung's
-// value is scaled by how much of the 5-minute clock is left, so a fast win beats
-// a grind on the same bot.
+/** The most a fast win can add on top of its rung. Kept strictly below TIER_BASE so
+ *  that speed never outranks depth: see gamePoints. */
+const MAX_SPEED_BONUS = 50;
+const TIER_BASE = 100;
+
+// Points for winning one Game: the rung is worth TIER_BASE per step, plus a flat
+// speed bonus scaled by how much of the 5-minute clock is left. The bonus is flat
+// (not scaled by rung) and smaller than one rung's worth, so the best possible run
+// of n bots always scores below the worst possible run of n + 1.
 export function gamePoints(tierIndex: number, clockMs: number): number {
-  const base = (tierIndex + 1) * 100;
-  return base + Math.round((base / 2) * (clockMs / PLAYER_CLOCK_MS));
+  const base = (tierIndex + 1) * TIER_BASE;
+  return base + Math.round(MAX_SPEED_BONUS * (clockMs / PLAYER_CLOCK_MS));
 }
 
 const RUN_STATUSES: readonly RunStatus[] = ['playing', 'lost', 'drawn', 'ladder-complete'];
@@ -43,6 +51,7 @@ export function isRunState(value: unknown): value is RunState {
     v.tierIndex >= DIFFICULTY_TIERS.length ||
     typeof v.score !== 'number' ||
     typeof v.bestScore !== 'number' ||
+    (v.lastGamePoints !== undefined && typeof v.lastGamePoints !== 'number') ||
     !RUN_STATUSES.includes(v.status as RunStatus) ||
     !isGameState(v.game)
   ) {
@@ -66,11 +75,20 @@ export function runReducer(state: RunState, event: RunEvent): RunState {
     return { ...state, game, status: runStatus };
   }
 
-  const score = state.score + gamePoints(state.tierIndex, game.clockMs);
+  const lastGamePoints = gamePoints(state.tierIndex, game.clockMs);
+  const score = state.score + lastGamePoints;
   const bestScore = Math.max(state.bestScore, score);
   const nextTierIndex = state.tierIndex + 1;
   if (nextTierIndex >= DIFFICULTY_TIERS.length) {
-    return { ...state, game, score, bestScore, status: 'ladder-complete' };
+    return { ...state, game, score, bestScore, lastGamePoints, status: 'ladder-complete' };
   }
-  return { ...state, tierIndex: nextTierIndex, score, bestScore, status: 'playing', game: createInitialGameState() };
+  return {
+    ...state,
+    tierIndex: nextTierIndex,
+    score,
+    bestScore,
+    lastGamePoints,
+    status: 'playing',
+    game: createInitialGameState(),
+  };
 }

@@ -45,6 +45,21 @@ body {
   font-weight: 500;
 }
 
+.round-result {
+  margin: 0;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  text-align: center;
+  color: light-dark(#1b5e20, #7ee08a);
+  background: light-dark(#e6f4ea, #17301c);
+}
+
+.run-end .final-score {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
 .error-message {
   text-align: center;
   color: light-dark(#b00020, #ff6b6b);

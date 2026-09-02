@@ -40,16 +40,18 @@ const RUN_END: Record<Exclude<RunStatus, 'playing'>, { heading: string; message:
 type RunEndScreenProps = {
   status: Exclude<RunStatus, 'playing'>;
   score: number;
+  lastGamePoints: number | undefined;
   onNewRun: () => void;
 };
 
-function RunEndScreen({ status, score, onNewRun }: RunEndScreenProps) {
+function RunEndScreen({ status, score, lastGamePoints, onNewRun }: RunEndScreenProps) {
   const { heading, message, className } = RUN_END[status];
   return (
     <div role="alert" className={className}>
       <h2>{heading}</h2>
       <p>{message}</p>
-      <p>Final score: {score}</p>
+      {lastGamePoints !== undefined && <p>Last bot beaten: +{lastGamePoints}</p>}
+      <p className="final-score">Final score: {score}</p>
       <button type="button" onClick={onNewRun}>
         Start new run
       </button>
@@ -83,6 +85,12 @@ function App() {
           <p className="stat-pill">
             Clock: <strong>{formatClock(game.clockMs)}</strong>
           </p>
+          {run.lastGamePoints !== undefined && (
+            <p className="round-result" role="status" aria-live="polite">
+              Bot {run.tierIndex} beaten: <strong>+{run.lastGamePoints}</strong> · Score:{' '}
+              <strong>{run.score}</strong>
+            </p>
+          )}
           <div className="board-wrap">
             <Chessboard
               options={{
@@ -99,7 +107,12 @@ function App() {
           )}
         </>
       ) : (
-        <RunEndScreen status={run.status} score={run.score} onNewRun={newRun} />
+        <RunEndScreen
+          status={run.status}
+          score={run.score}
+          lastGamePoints={run.lastGamePoints}
+          onNewRun={newRun}
+        />
       )}
       {botError && (
         <p className="error-message" role="alert">
