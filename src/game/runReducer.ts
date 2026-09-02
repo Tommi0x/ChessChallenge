@@ -30,14 +30,21 @@ export function createInitialRunState(bestScore = 0): RunState {
  *  that speed never outranks depth: see gamePoints. */
 const MAX_SPEED_BONUS = 50;
 const TIER_BASE = 100;
+/** Curve on the unspent-clock fraction. > 1 makes early minutes worth more than
+ *  late ones; 1 would be linear. The calibration knob for how sharply speed pays. */
+const SPEED_CURVE_EXPONENT = 2;
 
-// Points for winning one Game: the rung is worth TIER_BASE per step, plus a flat
-// speed bonus scaled by how much of the 5-minute clock is left. The bonus is flat
-// (not scaled by rung) and smaller than one rung's worth, so the best possible run
-// of n bots always scores below the worst possible run of n + 1.
+// Points for winning one Game: the rung is worth TIER_BASE per step, plus a speed
+// bonus for the share of the 5-minute clock left unspent.
+//
+// The bonus curves rather than scaling linearly, so the first minutes you save are
+// worth far more than the last: dropping 4:30 -> 4:00 costs more than 1:00 -> 0:30.
+// It stays flat across rungs and capped below one rung's worth, which is what makes
+// the best possible run of n bots always score below the worst possible run of n + 1.
 export function gamePoints(tierIndex: number, clockMs: number): number {
   const base = (tierIndex + 1) * TIER_BASE;
-  return base + Math.round(MAX_SPEED_BONUS * (clockMs / PLAYER_CLOCK_MS));
+  const unspent = clockMs / PLAYER_CLOCK_MS;
+  return base + Math.round(MAX_SPEED_BONUS * unspent ** SPEED_CURVE_EXPONENT);
 }
 
 const RUN_STATUSES: readonly RunStatus[] = ['playing', 'lost', 'drawn', 'ladder-complete'];

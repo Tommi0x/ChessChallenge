@@ -154,6 +154,20 @@ describe('runReducer', () => {
     }
   });
 
+  it('pays more for the first saved minutes than the last', () => {
+    // The speed bonus curves: an equal slice of clock is worth more near a full
+    // clock than near an empty one. Guards against it flattening back to linear.
+    const drop = (from: number, to: number) => gamePoints(0, from) - gamePoints(0, to);
+    const early = drop(4.5 * 60_000, 4 * 60_000);
+    const late = drop(60_000, 30_000);
+
+    expect(early).toBeGreaterThan(late);
+    // Still monotonic: more clock left never scores less.
+    for (let ms = 0; ms <= PLAYER_CLOCK_MS; ms += 15_000) {
+      expect(gamePoints(0, ms)).toBeGreaterThanOrEqual(gamePoints(0, Math.max(0, ms - 15_000)));
+    }
+  });
+
   it('records the points the last won game paid, for the UI to show', () => {
     const state = runReducer(stateAt(2, WHITE_MATES_FEN), { type: 'MOVE', from: 'a1', to: 'a8' });
     expect(state.lastGamePoints).toBe(gamePoints(2, PLAYER_CLOCK_MS));

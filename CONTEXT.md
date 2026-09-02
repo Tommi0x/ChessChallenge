@@ -21,7 +21,7 @@ One rung of the ladder, mapped to a specific Stockfish skill level. Tiers are pl
 _Avoid_: Level (ambiguous with UI/game level), difficulty (alone)
 
 **Score**:
-Points accumulated during the current Run. Each Game won is worth `(tier number) * 100`, plus a flat bonus of up to 50 scaled by the share of the clock still unspent when the Game ended — so harder rungs and faster wins both pay more, and two players who fall at the same rung can still be separated. The speed bonus is flat and worth less than one rung, which is what guarantees depth outranks speed: the fastest possible run of n bots always scores below the slowest possible run of n + 1.
+Points accumulated during the current Run. Each Game won is worth `(tier number) * 100`, plus a bonus of up to 50 for the share of the clock still unspent when the Game ended. The bonus curves on that share rather than scaling with it, so the first minutes saved are worth far more than the last — so harder rungs and faster wins both pay more, and two players who fall at the same rung can still be separated. The speed bonus is flat and worth less than one rung, which is what guarantees depth outranks speed: the fastest possible run of n bots always scores below the slowest possible run of n + 1.
 _Avoid_: Points
 
 **Best Score**:
