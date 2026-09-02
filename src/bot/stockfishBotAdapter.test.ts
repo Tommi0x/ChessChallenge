@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStockfishBotAdapter } from './stockfishBotAdapter';
-import type { DifficultyTier } from './botAdapter';
+import type { DifficultyTier } from '../game/ladder';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const AFTER_E4_FEN = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
 // Above the UCI_Elo floor: engine-calibrated, never blunders.
-const STRONG_TIER: DifficultyTier = { elo: 1600 };
+const STRONG_TIER: DifficultyTier = { kind: 'calibrated', elo: 1600 };
 // Below the floor: node-starved with a blunder rate.
-const WEAK_TIER: DifficultyTier = { elo: 200, nodes: 1, blunderChance: 0.5 };
+const WEAK_TIER: DifficultyTier = { kind: 'starved', elo: 200, nodes: 1, blunderChance: 0.5 };
 
 class FakeWorker {
   listeners: Record<string, ((event: any) => void)[]> = { message: [], error: [] };

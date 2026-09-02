@@ -1,19 +1,15 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Chessboard } from 'react-chessboard';
 import type { PieceDropHandlerArgs } from 'react-chessboard';
 import { createStockfishBotAdapter } from './bot/stockfishBotAdapter';
 import type { BotAdapter } from './bot/botAdapter';
-import { createInitialRunState, currentTier, isRunState, runReducer, type RunState } from './game/runReducer';
+import { DIFFICULTY_TIERS } from './game/ladder';
 import type { GameStatus } from './game/gameReducer';
 import type { RunStatus } from './game/runReducer';
-import { createLocalStoragePersistenceAdapter } from './persistence/persistenceAdapter';
-import { runEndPresentation } from './runEndPresentation';
+import { createLocalStorageRunStore } from './persistence/runStore';
+import { useRun } from './useRun';
 
-const TICK_MS = 1000;
-
-const isNumber = (value: unknown): value is number => typeof value === 'number';
-const bestScoreAdapter = createLocalStoragePersistenceAdapter<number>('chesschallenge:best-score:v1', isNumber);
-const runStateAdapter = createLocalStoragePersistenceAdapter<RunState>('chesschallenge:run-state:v1', isRunState);
+const store = createLocalStorageRunStore();
 
 function statusMessage(status: GameStatus, winner: 'w' | 'b' | null): string | null {
   if (status === 'checkmate') return winner === 'w' ? 'Checkmate — you win!' : 'Checkmate — the bot wins.';
@@ -30,27 +26,32 @@ function formatClock(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-function runEndMessage(status: RunStatus): string | null {
-  if (status === 'ladder-complete') return 'You beat the whole ladder!';
-  if (status === 'lost') return 'Run over — the bot won.';
-  if (status === 'drawn') return 'Run over — drawn.';
-  return null;
-}
+// One switch for how a Run ends: add an outcome here and nowhere else.
+const RUN_END: Record<Exclude<RunStatus, 'playing'>, { heading: string; message: string; className: string }> = {
+  'ladder-complete': {
+    heading: '🏆 Ladder complete!',
+    message: 'You beat the whole ladder!',
+    className: 'run-end run-end--ladder-complete',
+  },
+  lost: { heading: 'Run over', message: 'Run over — the bot won.', className: 'run-end' },
+  drawn: { heading: 'Run over', message: 'Run over — drawn.', className: 'run-end' },
+};
 
 type RunEndScreenProps = {
   status: Exclude<RunStatus, 'playing'>;
-  message: string | null;
   score: number;
+  lastGamePoints: number | undefined;
   onNewRun: () => void;
 };
 
-function RunEndScreen({ status, message, score, onNewRun }: RunEndScreenProps) {
-  const { heading, className } = runEndPresentation(status);
+function RunEndScreen({ status, score, lastGamePoints, onNewRun }: RunEndScreenProps) {
+  const { heading, message, className } = RUN_END[status];
   return (
     <div role="alert" className={className}>
       <h2>{heading}</h2>
       <p>{message}</p>
-      <p>Final score: {score}</p>
+      {lastGamePoints !== undefined && <p>Last bot beaten: +{lastGamePoints}</p>}
+      <p className="final-score">Final score: {score}</p>
       <button type="button" onClick={onNewRun}>
         Start new run
       </button>
@@ -59,96 +60,42 @@ function RunEndScreen({ status, message, score, onNewRun }: RunEndScreenProps) {
 }
 
 function App() {
-  const [run, dispatch] = useReducer(runReducer, undefined, () => {
-    const savedBest = bestScoreAdapter.load() ?? 0;
-    const savedRun = runStateAdapter.load();
-    if (!savedRun) return createInitialRunState(savedBest);
-    // Reconcile against the standalone best-score key in case another tab raised it more recently.
-    return { ...savedRun, bestScore: Math.max(savedRun.bestScore, savedBest) };
-  });
-  const [botError, setBotError] = useState<string | null>(null);
-  const botRef = useRef<BotAdapter | null>(null);
-  if (botRef.current === null) {
-    botRef.current = createStockfishBotAdapter();
-  }
+  // Lazy initializer: one Bot per mount, built on first render and never again.
+  const [bot] = useState<BotAdapter>(createStockfishBotAdapter);
 
+  const { run, botError, onPieceDrop, newRun } = useRun(bot, store);
   const { game } = run;
-  const tier = currentTier(run);
 
-  useEffect(() => {
-    bestScoreAdapter.save(run.bestScore);
-  }, [run.bestScore]);
-
-  const lastSavedKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    // Snapshot after moves/run transitions only, not every clock TICK (ADR 0003).
-    const key = `${run.game.fen}|${run.game.status}|${run.status}|${run.tierIndex}`;
-    if (lastSavedKeyRef.current === key) return;
-    lastSavedKeyRef.current = key;
-    runStateAdapter.save(run);
-  }, [run]);
-
-  useEffect(() => {
-    if (game.status !== 'playing' || game.turn !== 'b') return;
-
-    let cancelled = false;
-    botRef.current!.getMove(game.fen, tier).then(
-      (move) => {
-        if (!cancelled) dispatch({ type: 'MOVE', ...move });
-      },
-      (error: unknown) => {
-        if (!cancelled) setBotError(error instanceof Error ? error.message : 'The bot failed to move.');
-      },
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, [game.fen, game.status, game.turn, tier]);
-
-  useEffect(() => {
-    if (game.status !== 'playing' || game.turn !== 'w') return;
-
-    let lastTick = Date.now();
-    const id = setInterval(() => {
-      const now = Date.now();
-      dispatch({ type: 'TICK', deltaMs: now - lastTick });
-      lastTick = now;
-    }, TICK_MS);
-    return () => clearInterval(id);
-  }, [game.status, game.turn]);
-
-  function onPieceDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
-    if (!targetSquare || game.status !== 'playing' || game.turn !== 'w') return false;
-
-    const move = { from: sourceSquare, to: targetSquare, promotion: 'q' };
-    const next = runReducer(run, { type: 'MOVE', ...move });
-    if (next === run) return false;
-
-    dispatch({ type: 'MOVE', ...move });
-    return true;
+  function handlePieceDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
+    if (!targetSquare) return false;
+    return onPieceDrop(sourceSquare, targetSquare);
   }
 
   const message = statusMessage(game.status, game.winner);
-  const endMessage = runEndMessage(run.status);
 
   return (
     <main className="app">
       <h1>ChessChallenge</h1>
       <p className="stat-pill">
-        Score: <strong>{run.score}</strong> · Best: <strong>{run.bestScore}</strong>
+        Bot: <strong>{run.tierIndex + 1}/{DIFFICULTY_TIERS.length}</strong> · Score:{' '}
+        <strong>{run.score}</strong> · Best: <strong>{run.bestScore}</strong>
       </p>
       {run.status === 'playing' ? (
         <>
           <p className="stat-pill">
             Clock: <strong>{formatClock(game.clockMs)}</strong>
           </p>
+          {run.lastGamePoints !== undefined && (
+            <p className="round-result" role="status" aria-live="polite">
+              Bot {run.tierIndex} beaten: <strong>+{run.lastGamePoints}</strong> · Score:{' '}
+              <strong>{run.score}</strong>
+            </p>
+          )}
           <div className="board-wrap">
             <Chessboard
               options={{
                 position: game.fen,
-                onPieceDrop,
+                onPieceDrop: handlePieceDrop,
                 allowDragging: game.status === 'playing' && game.turn === 'w',
               }}
             />
@@ -162,9 +109,9 @@ function App() {
       ) : (
         <RunEndScreen
           status={run.status}
-          message={endMessage}
           score={run.score}
-          onNewRun={() => dispatch({ type: 'NEW_RUN' })}
+          lastGamePoints={run.lastGamePoints}
+          onNewRun={newRun}
         />
       )}
       {botError && (
