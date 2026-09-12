@@ -242,6 +242,11 @@ function App() {
             position: game.fen,
             onPieceDrop: handleDrop,
             allowDragging: game.status === 'playing' && game.turn === 'w',
+            animationDurationInMs: 225,
+            // Notation sits absolutely-positioned in the same square as the piece, which
+            // paints it above a piece's static box regardless of DOM order — push it behind.
+            alphaNotationStyle: { zIndex: -1 },
+            numericNotationStyle: { zIndex: -1 },
           }}
         />
       </div>

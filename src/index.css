@@ -465,6 +465,13 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+
+  /* Piece moves are feedback (which piece moved, and to where), not decoration —
+   * keep them exempt. Duration must match Chessboard's animationDurationInMs in
+   * App.tsx. */
+  [data-piece] {
+    transition-duration: 225ms !important;
+  }
 }
 
 /* ── Debug panel (dev only, see DebugPanel.tsx) ──────────────────────────── */
