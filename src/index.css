@@ -1,120 +1,527 @@
-:root {
-  color-scheme: light dark;
-  font: 16px/1.4 system-ui, sans-serif;
+/* ChessChallenge — the climb from a monkey to whatever comes after us.
+ *
+ * One rule governs this file: the board never changes. It stays a standard,
+ * legible chessboard at every rung, because the player has to actually play on
+ * it. Everything AROUND the board is what evolves.
+ *
+ * Each era sets seven properties. --field is the flat ground; --atmos is that
+ * era's own light, and it is the device that makes the worlds distinct rather
+ * than merely tinted: firelight rises from below in the cave, dawn falls from
+ * above, the machine has scanlines, the void has a vignette. Adding a rung is
+ * an era block here plus a portrait in OpponentPortrait.tsx.
+ *
+ * Every --atmos peak is held under ~0.04 relative luminance so --ink-dim keeps
+ * 4.5:1 over the brightest part of its own gradient. Raising one means
+ * re-checking that.
+ */
+
+@font-face {
+  font-family: 'Archivo';
+  src: url('./fonts/archivo-800-latin.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+2000-206F, U+2212;
 }
+
+:root {
+  /* Height guard with a floor. The calc keeps the board from growing the page
+   * past one screen; the max() stops a short viewport (a phone in landscape,
+   * a small laptop window) from driving it down to something unplayable. The
+   * page may scroll — the board may not shrink below 18rem. */
+  --board-size: min(92vw, max(18rem, calc(100dvh - 20rem)), 30rem);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --display: 'Archivo', system-ui, sans-serif;
+
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  color-scheme: dark;
+}
+
+/* ── The ten eras ─────────────────────────────────────────────────────────── */
+
+[data-era='jungle'] {
+  --field: #102a1d; --ink: #e9f2e6; --ink-dim: #9db3a2; --accent: #d8a63c; --accent-ink: #0a1410;
+  --atmos: radial-gradient(105% 70% at 50% 0%, #17402c 0%, transparent 72%);
+}
+[data-era='cave'] {
+  --field: #241408; --ink: #f2e6d6; --ink-dim: #b39d84; --accent: #d2542a; --accent-ink: #16110c;
+  --atmos: radial-gradient(80% 55% at 50% 104%, #55240f 0%, transparent 70%);
+}
+[data-era='dawn'] {
+  --field: #2b1a0c; --ink: #f7ead8; --ink-dim: #bda486; --accent: #e8a33d; --accent-ink: #1d150e;
+  --atmos: linear-gradient(180deg, #4a2c11 0%, transparent 58%);
+}
+[data-era='tavern'] {
+  --field: #251708; --ink: #f0e2cf; --ink-dim: #b39b7d; --accent: #c98b3a; --accent-ink: #1a120c;
+  --atmos: radial-gradient(70% 50% at 18% 88%, #4a3012 0%, transparent 72%);
+}
+[data-era='club'] {
+  --field: #12301f; --ink: #e6f0e6; --ink-dim: #93ab99; --accent: #c2a15a; --accent-ink: #0d1a12;
+  --atmos: radial-gradient(85% 55% at 50% 12%, #16402a 0%, transparent 70%);
+}
+[data-era='hall'] {
+  /* Lifted off #c8433f, which measured 3.6:1 here and failed the rank line. */
+  --field: #181d28; --ink: #eef1f6; --ink-dim: #99a1b0; --accent: #ef6b64; --accent-ink: #12151b;
+  --atmos: linear-gradient(180deg, #232b3d 0%, transparent 62%);
+}
+[data-era='machine'] {
+  --field: #0c180c; --ink: #d9f2d5; --ink-dim: #7fa87c; --accent: #4ade5a; --accent-ink: #0b0e0b;
+  --atmos:
+    repeating-linear-gradient(180deg, rgb(74 222 90 / 0.06) 0 1px, transparent 1px 4px),
+    radial-gradient(90% 60% at 50% 40%, #16301a 0%, transparent 75%);
+}
+[data-era='network'] {
+  --field: #0a1728; --ink: #e2ecfa; --ink-dim: #8098b8; --accent: #35d6e8; --accent-ink: #070d18;
+  --atmos:
+    repeating-linear-gradient(90deg, rgb(53 214 232 / 0.05) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(180deg, rgb(53 214 232 / 0.05) 0 1px, transparent 1px 48px),
+    radial-gradient(90% 65% at 50% 8%, #0e2c47 0%, transparent 72%);
+}
+[data-era='void'] {
+  --field: #120824; --ink: #ede4f7; --ink-dim: #a48fbd; --accent: #d94fd0; --accent-ink: #0e0716;
+  --atmos:
+    radial-gradient(140% 90% at 50% 50%, transparent 30%, #05010c 100%),
+    radial-gradient(70% 55% at 50% 42%, #331155 0%, transparent 75%);
+}
+/* The last rung inverts: no colour, no atmosphere, nothing to hide behind.
+ * The absence is the device. */
+[data-era='blank'] {
+  --field: #f4f4f2; --ink: #0d0d0d; --ink-dim: #6b6b68; --accent: #0d0d0d; --accent-ink: #f4f4f2;
+  --atmos: none;
+  color-scheme: light;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
+  background: #0a1410;
+  color: #e9f2e6;
 }
 
-#root {
-  display: flex;
-  justify-content: center;
-  padding: 2rem 1rem;
+#root { min-height: 100dvh; }
+
+::selection { background: var(--accent); color: var(--accent-ink); }
+
+:where(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 0.25rem;
 }
+
+/* ── Shell ────────────────────────────────────────────────────────────────── */
 
 .app {
+  /* Derived from --ink, so they must sit on the element the era sets it on.
+   * On :root they resolve against nothing and every plate loses its ground. */
+  --plate: color-mix(in srgb, var(--ink) 8%, transparent);
+  --edge: color-mix(in srgb, var(--ink) 20%, transparent);
+
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: safe center;
+  gap: 1.5rem;
+  min-height: 100dvh;
+  padding: clamp(1rem, 4vw, 2.5rem) 1rem 2rem;
+  background: var(--atmos, none), var(--field);
+  color: var(--ink);
+  transition: background 900ms var(--ease-out), color 900ms var(--ease-out);
+}
+
+.wordmark {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* ── Opponent plate — the only place a personality lives ──────────────────── */
+
+.opponent {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
   gap: 1rem;
-  width: min(100%, 480px);
+  width: var(--board-size);
+  padding: 0.9rem 1.1rem;
+  background: var(--plate);
+  border: 1px solid var(--edge);
+  border-radius: 0.75rem;
+  transition: background 900ms var(--ease-out), border-color 900ms var(--ease-out);
 }
 
-.app h1 {
-  margin: 0;
-  font-size: clamp(1.5rem, 5vw, 2rem);
-  text-align: center;
+.portrait {
+  display: block;
+  width: 3.75rem;
+  height: 3.75rem;
+  color: var(--accent);
+  transition: color 900ms var(--ease-out);
 }
 
-.stat-pill {
+.opponent-name {
   margin: 0;
-  background: light-dark(#f0f0f0, #2a2a2a);
-  padding: 0.35rem 0.9rem;
-  border-radius: 999px;
-  font-size: 0.9rem;
+  font-family: var(--display);
+  font-size: clamp(1.15rem, 4.5vw, 1.5rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
+
+.opponent-tagline {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--ink-dim);
+  text-wrap: pretty;
+}
+
+.opponent-rank {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Board — deliberately unchanging ──────────────────────────────────────── */
 
 .board-wrap {
-  width: min(90vw, 480px);
-}
-
-.status-message {
-  text-align: center;
-  font-weight: 500;
-}
-
-.round-result {
-  margin: 0;
-  padding: 0.35rem 0.9rem;
-  border-radius: 999px;
-  font-size: 0.9rem;
-  text-align: center;
-  color: light-dark(#1b5e20, #7ee08a);
-  background: light-dark(#e6f4ea, #17301c);
-}
-
-.run-end .final-score {
-  font-size: 1.35rem;
-  font-weight: 700;
-}
-
-.error-message {
-  text-align: center;
-  color: light-dark(#b00020, #ff6b6b);
-}
-
-button {
-  font: inherit;
-  padding: 0.6rem 1.4rem;
-  border: 1px solid light-dark(#ccc, #555);
+  width: var(--board-size);
   border-radius: 0.5rem;
-  background: light-dark(#f0f0f0, #2a2a2a);
+  overflow: hidden;
+  box-shadow: 0 1.5rem 3rem -1rem rgb(0 0 0 / 0.6);
+}
+
+[data-era='blank'] .board-wrap { box-shadow: 0 1.5rem 3rem -1rem rgb(0 0 0 / 0.22); }
+
+/* ── Stats ────────────────────────────────────────────────────────────────── */
+
+.stats { display: flex; gap: 0.4rem; width: var(--board-size); }
+
+.stat {
+  flex: 1;
+  padding: 0.55rem 0.7rem;
+  background: var(--plate);
+  border: 1px solid var(--edge);
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.stat-value {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.stat-value.is-urgent { color: var(--accent); }
+
+.status-line {
+  margin: 0;
+  min-height: 1.4em;
+  font-weight: 600;
+  text-align: center;
+  color: var(--accent);
+}
+
+.error-line { margin: 0; max-width: var(--board-size); text-align: center; color: var(--accent); }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+.btn {
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.85rem 2rem;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: transform 200ms var(--ease-out), filter 200ms var(--ease-out);
+}
+
+.btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+/* ── Start screen ─────────────────────────────────────────────────────────── */
+
+.start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  max-width: 34rem;
+  text-align: center;
+}
+
+.start-title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(2.75rem, 13vw, 5rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+  text-wrap: balance;
+}
+
+.start-title span { display: block; color: var(--accent); }
+
+.start-blurb {
+  margin: 0;
+  max-width: 30rem;
+  font-size: 1.0625rem;
+  color: var(--ink-dim);
+  text-wrap: pretty;
+}
+
+.ladder {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 0.5rem;
+  max-width: 32rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  color: var(--ink-dim);
+}
+
+.ladder li { display: flex; align-items: center; gap: 0.5rem; }
+.ladder li::after {
+  content: '';
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink) 40%, transparent);
+}
+.ladder li:last-child::after { display: none; }
+.ladder li:last-child { color: var(--accent); font-weight: 600; }
+
+.start-note { margin: 0; font-size: 0.8125rem; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+
+/* ── Score pop — the authored moment ──────────────────────────────────────── */
+
+.score-pop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-content: center;
+  gap: 0.3rem;
+  text-align: center;
+  background: color-mix(in srgb, var(--field) 84%, transparent);
+  backdrop-filter: blur(7px);
+  animation: pop-in 300ms var(--ease-out) both;
+  pointer-events: none;
+}
+
+.score-pop.is-leaving { animation: pop-out 420ms var(--ease-out) both; }
+
+.score-pop-name {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(1.6rem, 7vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  color: var(--ink-dim);
+}
+
+/* The number the user asked to watch: it arrives out of blur at scale, then
+ * settles. Opacity alone would make the headline feature the quietest thing
+ * on screen. */
+.score-pop-total {
+  margin: 0.4rem 0 0;
+  font-family: var(--display);
+  font-size: clamp(3.25rem, 17vw, 6rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: var(--accent);
+  animation: total-land 700ms var(--ease-out) both;
+}
+
+.score-pop-gain {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+  animation: gain-rise 700ms 140ms var(--ease-out) both;
+}
+
+@keyframes pop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop-out { from { opacity: 1; } to { opacity: 0; transform: scale(1.04); } }
+
+@keyframes total-land {
+  from { opacity: 0; transform: scale(1.4); filter: blur(16px); }
+  to   { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+@keyframes gain-rise {
+  from { opacity: 0; transform: translateY(0.75rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── End screen ───────────────────────────────────────────────────────────── */
+
+.end { display: flex; flex-direction: column; align-items: center; gap: 1rem; max-width: 34rem; text-align: center; }
+
+.end-headline {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(2.25rem, 10vw, 3.75rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.end-detail { margin: 0; max-width: 30rem; color: var(--ink-dim); text-wrap: pretty; }
+
+.end-score { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.75rem 0 0.25rem; }
+
+.end-score-value {
+  font-family: var(--display);
+  font-size: clamp(3.5rem, 18vw, 6.5rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.055em;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.end-score-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.end-best { margin: 0; font-size: 0.875rem; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.end-best strong { color: var(--ink); }
+.end-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
+
+/* ── Desktop ──────────────────────────────────────────────────────────────
+ * Below this the board is deliberately phone-sized. Above it, the whole
+ * composition scales with the viewport instead of stranding a phone column in
+ * an empty field. The pin holds either way: board centre, opponent above, one
+ * opponent only. */
+
+@media (min-width: 1024px) {
+  :root { --board-size: min(92vw, max(18rem, calc(100dvh - 23rem)), 38rem); }
+
+  .app { gap: 1.75rem; padding-block: 2rem; }
+
+  .opponent { padding: 1.15rem 1.5rem; gap: 1.35rem; border-radius: 1rem; }
+  .portrait { width: 4.75rem; height: 4.75rem; }
+  .opponent-name { font-size: 1.875rem; }
+  .opponent-tagline { font-size: 0.9375rem; margin-top: 0.3rem; }
+
+  .stats { gap: 0.5rem; }
+  .stat { padding: 0.7rem 0.9rem; }
+  .stat-value { font-size: 1.375rem; }
+
+  .start-title { font-size: 5.5rem; }
+  .start-blurb { font-size: 1.125rem; }
+  .ladder { font-size: 0.875rem; }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Debug panel (dev only, see DebugPanel.tsx) ──────────────────────────── */
+
+.debug-panel {
+  position: fixed;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 20;
+  width: 15rem;
+  padding: 0.75rem;
+  background: rgb(10 10 10 / 0.88);
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: 0.5rem;
+  color: #f4f4f2;
+  font-family: system-ui, sans-serif;
+  font-size: 0.6875rem;
+}
+
+.debug-title {
+  margin: 0 0 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffb454;
+}
+
+.debug-label {
+  margin: 0.5rem 0 0.3rem;
+  color: rgb(255 255 255 / 0.6);
+}
+
+.debug-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.debug-row button,
+.debug-reset {
+  padding: 0.2rem 0.45rem;
+  background: rgb(255 255 255 / 0.1);
+  border: 1px solid rgb(255 255 255 / 0.2);
+  border-radius: 0.25rem;
+  color: inherit;
+  font-size: inherit;
   cursor: pointer;
 }
 
-button:hover {
-  background: light-dark(#e0e0e0, #383838);
+.debug-row button:hover,
+.debug-reset:hover {
+  background: rgb(255 255 255 / 0.2);
 }
 
-.run-end {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  text-align: center;
-  border: 2px solid currentColor;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
+.debug-reset {
+  display: block;
   width: 100%;
-  box-sizing: border-box;
-}
-
-.run-end h2 {
-  margin: 0;
-}
-
-.run-end p {
-  margin: 0;
-}
-
-.run-end button {
-  margin-top: 0.5rem;
-}
-
-.run-end--ladder-complete {
-  color: #7a5b00;
-  background: linear-gradient(135deg, #fff4cc, #ffd966);
-  border-color: #d4a017;
-}
-
-@media (max-width: 420px) {
-  #root {
-    padding: 1.25rem 0.75rem;
-  }
-
-  .run-end {
-    padding: 1.25rem 1rem;
-  }
+  margin-top: 0.6rem;
+  text-align: center;
 }

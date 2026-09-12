@@ -4,10 +4,17 @@ import type { DifficultyTier } from '../game/ladder';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const AFTER_E4_FEN = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+// Identity plays no part in how the Bot moves; it rides along because a rung is
+// one thing. These fixtures carry it only to satisfy the type.
 // Above the UCI_Elo floor: engine-calibrated, never blunders.
-const STRONG_TIER: DifficultyTier = { kind: 'calibrated', elo: 1600 };
+const STRONG_TIER: DifficultyTier = {
+  kind: 'calibrated', elo: 1600, name: 'The AI', tagline: 'test fixture', era: 'network',
+};
 // Below the floor: node-starved with a blunder rate.
-const WEAK_TIER: DifficultyTier = { kind: 'starved', elo: 200, nodes: 1, blunderChance: 0.5 };
+const WEAK_TIER: DifficultyTier = {
+  kind: 'starved', elo: 200, nodes: 1, blunderChance: 0.5,
+  name: 'The Monkey', tagline: 'test fixture', era: 'jungle',
+};
 
 class FakeWorker {
   listeners: Record<string, ((event: any) => void)[]> = { message: [], error: [] };
