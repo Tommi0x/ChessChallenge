@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInitialRunState } from './game/runReducer';
 
@@ -139,5 +139,116 @@ describe('App', () => {
     expect(screen.getByText('+340')).toBeInTheDocument();
     // The name and the number carry the moment; there is no label above them.
     expect(screen.queryByText('Defeated')).not.toBeInTheDocument();
+  });
+});
+
+// react-chessboard tags every square with data-square and every piece with
+// data-piece, and applies our squareStyles as an inline style on a div inside
+// the square — that's the seam these tests drive through.
+describe('board click-to-move', () => {
+  beforeEach(() => {
+    // jsdom lays out every element at 0×0. react-chessboard's move-animation
+    // effect measures the source square and throws when that comes back
+    // zero-width, so give every element a plausible size.
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 60,
+      height: 60,
+      top: 0,
+      left: 0,
+      right: 60,
+      bottom: 60,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    } as DOMRect);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function square(container: HTMLElement, id: string) {
+    const el = container.querySelector(`[data-square="${id}"]`);
+    if (!el) throw new Error(`no square rendered for ${id}`);
+    return el as HTMLElement;
+  }
+
+  function hasHighlight(container: HTMLElement, id: string) {
+    return square(container, id).querySelector('[style*="gradient"], [style*="color-mix"]') !== null;
+  }
+
+  it('selects a piece on click and shows its legal destinations', () => {
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Face the Monkey' }));
+
+    fireEvent.click(square(container, 'e2'));
+
+    expect(hasHighlight(container, 'e2')).toBe(true);
+    expect(hasHighlight(container, 'e3')).toBe(true);
+    expect(hasHighlight(container, 'e4')).toBe(true);
+    // Only reachable squares light up.
+    expect(hasHighlight(container, 'e5')).toBe(false);
+  });
+
+  it('moves the piece when a highlighted destination is clicked', async () => {
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Face the Monkey' }));
+
+    fireEvent.click(square(container, 'e2'));
+    fireEvent.click(square(container, 'e4'));
+
+    // The board holds the move behind its own animationDurationInMs before
+    // the piece actually reparents to its new square.
+    await waitFor(() => {
+      expect(square(container, 'e4').querySelector('[data-piece="wP"]')).not.toBeNull();
+    });
+    expect(square(container, 'e2').querySelector('[data-piece]')).toBeNull();
+    // The selection (and its highlights) clears once the move lands.
+    expect(hasHighlight(container, 'e4')).toBe(false);
+  });
+
+  it('deselects on a second click of the same piece', () => {
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Face the Monkey' }));
+
+    fireEvent.click(square(container, 'e2'));
+    fireEvent.click(square(container, 'e2'));
+
+    expect(hasHighlight(container, 'e2')).toBe(false);
+    expect(hasHighlight(container, 'e4')).toBe(false);
+    expect(square(container, 'e2').querySelector('[data-piece="wP"]')).not.toBeNull();
+  });
+
+  it('switches selection to another own piece without needing a deselect first', () => {
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Face the Monkey' }));
+
+    fireEvent.click(square(container, 'e2'));
+    fireEvent.click(square(container, 'd2'));
+
+    expect(hasHighlight(container, 'e2')).toBe(false);
+    expect(hasHighlight(container, 'd2')).toBe(true);
+    expect(hasHighlight(container, 'd4')).toBe(true);
+  });
+
+  it('marks a capturable square differently from a quiet destination', () => {
+    // After 1.e4 d5, White's e-pawn can push to e5 or capture on d5.
+    const initial = createInitialRunState();
+    saveRun({
+      game: {
+        ...initial.game,
+        fen: 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2',
+        turn: 'w',
+      },
+    });
+    const { container } = render(<App />);
+
+    fireEvent.click(square(container, 'e4'));
+
+    const captureStyle = square(container, 'd5').querySelector('[style*="gradient"]')?.getAttribute('style');
+    const pushStyle = square(container, 'e5').querySelector('[style*="gradient"]')?.getAttribute('style');
+    expect(captureStyle).toBeTruthy();
+    expect(pushStyle).toBeTruthy();
+    expect(captureStyle).not.toBe(pushStyle);
   });
 });

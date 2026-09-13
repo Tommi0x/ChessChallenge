@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
+import { Chess } from 'chess.js';
+import type { Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
-import type { PieceDropHandlerArgs } from 'react-chessboard';
+import type { PieceDropHandlerArgs, PieceHandlerArgs, SquareHandlerArgs } from 'react-chessboard';
 import { createStockfishBotAdapter } from './bot/stockfishBotAdapter';
 import type { BotAdapter } from './bot/botAdapter';
 import { DIFFICULTY_TIERS, currentTier } from './game/ladder';
@@ -25,6 +28,17 @@ const SCORE_POP_MS = 2400;
 const SCORE_POP_EXIT_MS = 420;
 const COUNT_UP_MS = 900;
 const URGENT_CLOCK_MS = 60_000;
+
+const SELECTED_SQUARE_STYLE: CSSProperties = {
+  backgroundColor: 'color-mix(in srgb, var(--accent) 45%, transparent)',
+};
+const MOVE_DOT_STYLE: CSSProperties = {
+  backgroundImage: 'radial-gradient(circle, rgba(0, 0, 0, 0.28) 19%, transparent 20%)',
+};
+const CAPTURE_RING_STYLE: CSSProperties = {
+  backgroundImage:
+    'radial-gradient(circle, transparent 0%, transparent 79%, rgba(0, 0, 0, 0.28) 80%, rgba(0, 0, 0, 0.28) 90%, transparent 91%)',
+};
 
 function formatClock(ms: number): string {
   const total = Math.ceil(ms / 1000);
@@ -125,6 +139,28 @@ function App() {
   const previous = useRef({ tierIndex: run.tierIndex, score: run.score });
 
   const tier = currentTier(run);
+  const canInteract = game.status === 'playing' && game.turn === 'w';
+
+  const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
+  // Every move (the player's or the Bot's) changes the fen, and a stale
+  // selection pointing at a square from the position before it makes no sense.
+  // Adjusted during render rather than in an effect, per React's guidance for
+  // resetting state when an input changes — no extra render, no flash of the
+  // stale selection.
+  const [fenAtSelection, setFenAtSelection] = useState(game.fen);
+  if (game.fen !== fenAtSelection) {
+    setFenAtSelection(game.fen);
+    setSelectedSquare(null);
+  }
+
+  const legalMoves = selectedSquare ? new Chess(game.fen).moves({ square: selectedSquare, verbose: true }) : [];
+  const squareStyles: Record<string, CSSProperties> = {};
+  if (selectedSquare) {
+    squareStyles[selectedSquare] = SELECTED_SQUARE_STYLE;
+    for (const move of legalMoves) {
+      squareStyles[move.to] = move.captured ? CAPTURE_RING_STYLE : MOVE_DOT_STYLE;
+    }
+  }
 
   // A rung falls the moment tierIndex advances. That transition — not the run's
   // end — is what the score pop celebrates, so it fires once per rung and never
@@ -151,7 +187,32 @@ function App() {
   }, [run.tierIndex, run.score, run.lastGamePoints]);
 
   function handleDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
-    return targetSquare ? onPieceDrop(sourceSquare, targetSquare) : false;
+    const moved = targetSquare ? onPieceDrop(sourceSquare, targetSquare) : false;
+    // A drop that misses a legal square never changes the fen, so nothing else
+    // would clear the grabbed piece's highlights — clear them here regardless
+    // of whether the move landed.
+    setSelectedSquare(null);
+    return moved;
+  }
+
+  function handleDragStart({ square }: PieceHandlerArgs) {
+    // Grabbing a piece shows its legal moves the same way selecting it by
+    // click does; dragging a different piece than the one already selected
+    // just switches which one is highlighted.
+    if (canInteract && square) setSelectedSquare(square as Square);
+  }
+
+  function handleSquareClick({ piece, square }: SquareHandlerArgs) {
+    if (!canInteract) return;
+
+    if (selectedSquare && legalMoves.some((move) => move.to === square)) {
+      onPieceDrop(selectedSquare, square);
+      setSelectedSquare(null);
+      return;
+    }
+
+    const clickedOwnPiece = piece !== null && piece.pieceType.startsWith('w');
+    setSelectedSquare(clickedOwnPiece && square !== selectedSquare ? (square as Square) : null);
   }
 
   function handleNewRun() {
@@ -243,7 +304,11 @@ function App() {
             position: game.fen,
             pieces: stauntyPieces,
             onPieceDrop: handleDrop,
-            allowDragging: game.status === 'playing' && game.turn === 'w',
+            onPieceDrag: handleDragStart,
+            onPieceDragCancel: () => setSelectedSquare(null),
+            onSquareClick: handleSquareClick,
+            squareStyles,
+            allowDragging: canInteract,
             animationDurationInMs: 225,
             // Notation sits absolutely-positioned in the same square as the piece, which
             // paints it above a piece's static box regardless of DOM order — push it behind.
