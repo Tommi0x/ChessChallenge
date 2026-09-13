@@ -12,6 +12,7 @@ import { createLocalStorageRunStore } from './persistence/runStore';
 import { OpponentPortrait } from './OpponentPortrait';
 import { useRun } from './useRun';
 import { DebugPanel } from './DebugPanel';
+import { stauntyPieces } from './stauntyPieces';
 
 const store = createLocalStorageRunStore();
 
@@ -240,6 +241,7 @@ function App() {
         <Chessboard
           options={{
             position: game.fen,
+            pieces: stauntyPieces,
             onPieceDrop: handleDrop,
             allowDragging: game.status === 'playing' && game.turn === 'w',
             animationDurationInMs: 225,
