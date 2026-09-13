@@ -6,6 +6,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: process.env.GITHUB_ACTIONS ? '/ChessChallenge/' : '/',
   plugins: [react()],
+  // Vite does not read PORT on its own; without this it ignores an assigned
+  // port and silently picks its own, leaving whoever asked pointed at nothing.
+  server: { port: Number(process.env.PORT) || undefined },
   test: {
     // Worktrees live under .claude/ and carry their own (often stale) tests.
     exclude: [...configDefaults.exclude, '.claude/**'],

@@ -61,12 +61,24 @@ typography:
     fontWeight: 800
     lineHeight: 0.92
     letterSpacing: "-0.045em"
+  display-hero-lg:
+    fontFamily: "Archivo, system-ui, sans-serif"
+    fontSize: "5.5rem"
+    fontWeight: 800
+    lineHeight: 0.92
+    letterSpacing: "-0.045em"
   display-score:
     fontFamily: "Archivo, system-ui, sans-serif"
     fontSize: "clamp(3.5rem, 18vw, 6.5rem)"
     fontWeight: 800
     lineHeight: 1
     letterSpacing: "-0.055em"
+  display-score-pop:
+    fontFamily: "Archivo, system-ui, sans-serif"
+    fontSize: "clamp(3.25rem, 17vw, 6rem)"
+    fontWeight: 800
+    lineHeight: 1
+    letterSpacing: "-0.05em"
   headline:
     fontFamily: "Archivo, system-ui, sans-serif"
     fontSize: "clamp(2.25rem, 10vw, 3.75rem)"
@@ -79,9 +91,21 @@ typography:
     fontWeight: 800
     lineHeight: 1.1
     letterSpacing: "-0.025em"
+  title-lg:
+    fontFamily: "Archivo, system-ui, sans-serif"
+    fontSize: "1.875rem"
+    fontWeight: 800
+    lineHeight: 1.1
+    letterSpacing: "-0.025em"
   stat:
     fontFamily: "Archivo, system-ui, sans-serif"
     fontSize: "1.15rem"
+    fontWeight: 800
+    lineHeight: 1.45
+    letterSpacing: "-0.02em"
+  stat-lg:
+    fontFamily: "Archivo, system-ui, sans-serif"
+    fontSize: "1.375rem"
     fontWeight: 800
     lineHeight: 1.45
     letterSpacing: "-0.02em"

@@ -29,18 +29,18 @@ describe('App', () => {
   it('opens on the start screen, not the board, for an untouched run', () => {
     render(<App />);
 
-    expect(screen.getByRole('button', { name: 'Face the Monkey' })).toBeInTheDocument();
-    // All ten are named here — the one screen where the whole ladder is visible.
-    expect(screen.getByText('The Singularity')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument();
+    // The roster is deliberately not here: the start screen names no opponent.
+    expect(screen.queryByText('The Singularity')).not.toBeInTheDocument();
     expect(screen.queryByText('Clock')).not.toBeInTheDocument();
   });
 
   it('starts the run on the first rung when the start action is taken', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Face the Monkey' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
 
     expect(screen.getByRole('heading', { name: 'The Monkey' })).toBeInTheDocument();
-    expect(screen.getByText('Rung 1 / 10')).toBeInTheDocument();
+    expect(screen.getByText('Round 1')).toBeInTheDocument();
     expect(screen.getByText('Clock')).toBeInTheDocument();
   });
 
@@ -50,9 +50,8 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByRole('heading', { name: 'Homo Sapiens' })).toBeInTheDocument();
-    expect(screen.getByText('Rung 3 / 10')).toBeInTheDocument();
-    expect(screen.getByText('600 Elo')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Face the Monkey' })).not.toBeInTheDocument();
+    expect(screen.getByText('Round 3')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Start Challenge' })).not.toBeInTheDocument();
   });
 
   it('does not replay the score celebration when a run is resumed', () => {
@@ -78,24 +77,11 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'The climb ends here.' })).toBeInTheDocument();
+    // The card carries no verdict prose; the outcome is left to assistive tech.
+    expect(screen.getByText('Run over.')).toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument();
-    expect(screen.getByText('Final score')).toBeInTheDocument();
+    expect(screen.getByText('Score')).toBeInTheDocument();
     expect(screen.queryByText('Clock')).not.toBeInTheDocument();
-  });
-
-  it('marks a run that beats the stored best as a new best', () => {
-    const initial = createInitialRunState();
-    saveRun({
-      status: 'lost',
-      score: 900,
-      bestScore: 200,
-      game: { ...initial.game, status: 'timeout', winner: 'b' },
-    });
-
-    render(<App />);
-
-    expect(screen.getByText('New best score')).toBeInTheDocument();
   });
 
   it('gives a completed ladder its own screen', () => {
@@ -109,7 +95,8 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'You beat the Singularity.' })).toBeInTheDocument();
+    expect(screen.getByText('Ladder complete.')).toBeInTheDocument();
+    expect(screen.getByText('12')).toBeInTheDocument();
   });
 
   it('returns to the first rung when a new run is started', () => {
@@ -124,7 +111,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Climb again' }));
 
     expect(screen.getByRole('heading', { name: 'The Monkey' })).toBeInTheDocument();
-    expect(screen.getByText('Rung 1 / 10')).toBeInTheDocument();
+    expect(screen.getByText('Round 1')).toBeInTheDocument();
   });
 
   it('names the beaten opponent and what the rung paid', () => {
@@ -179,7 +166,7 @@ describe('board click-to-move', () => {
 
   it('selects a piece on click and shows its legal destinations', () => {
     const { container } = render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Face the Monkey' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
 
     fireEvent.click(square(container, 'e2'));
 
@@ -192,7 +179,7 @@ describe('board click-to-move', () => {
 
   it('moves the piece when a highlighted destination is clicked', async () => {
     const { container } = render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Face the Monkey' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
 
     fireEvent.click(square(container, 'e2'));
     fireEvent.click(square(container, 'e4'));
@@ -209,7 +196,7 @@ describe('board click-to-move', () => {
 
   it('deselects on a second click of the same piece', () => {
     const { container } = render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Face the Monkey' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
 
     fireEvent.click(square(container, 'e2'));
     fireEvent.click(square(container, 'e2'));
@@ -221,7 +208,7 @@ describe('board click-to-move', () => {
 
   it('switches selection to another own piece without needing a deselect first', () => {
     const { container } = render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Face the Monkey' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
 
     fireEvent.click(square(container, 'e2'));
     fireEvent.click(square(container, 'd2'));
