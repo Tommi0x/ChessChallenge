@@ -138,6 +138,17 @@ body {
 
 ::selection { background: var(--accent); color: var(--accent-ink); }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 :where(a, button, [tabindex]):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
@@ -393,19 +404,58 @@ body {
 
 /* ── End screen ───────────────────────────────────────────────────────────── */
 
-.end { display: flex; flex-direction: column; align-items: center; gap: 1rem; max-width: 34rem; text-align: center; }
-
-.end-headline {
-  margin: 0;
-  font-family: var(--display);
-  font-size: clamp(2.25rem, 10vw, 3.75rem);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 0.98;
-  text-wrap: balance;
+.end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  /* Sized to the icon grid plus padding, not to prose — the card holds a number
+   * and ten marks, so a measure wide enough for a paragraph just strands it. */
+  max-width: 24rem;
+  text-align: center;
+  padding: 2rem clamp(1.25rem, 6vw, 2.5rem);
+  background: var(--plate);
+  border: 1px solid var(--edge);
+  border-radius: 0.75rem;
 }
 
-.end-detail { margin: 0; max-width: 30rem; color: var(--ink-dim); text-wrap: pretty; }
+.end-wordmark {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* Reads as the name engraved on the card, not as a form field — the input
+ * chrome only appears on hover and focus, so a shared card shows just a name. */
+.end-name {
+  width: 100%;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  font-family: var(--display);
+  /* The Title step — the same one the opponent's name uses, because this is the
+   * same thing for the other player. */
+  font-size: clamp(1.15rem, 4.5vw, 1.5rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  text-align: center;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out);
+}
+
+.end-name::placeholder { color: var(--ink-dim); font-weight: 600; opacity: 1; }
+.end-name:hover { border-color: var(--edge); }
+.end-name:focus { background: var(--plate); border-color: var(--edge); }
+/* The global ring skips inputs — :where(a, button, [tabindex]) — so it is
+ * restated here rather than left to the UA's off-theme default. */
+.end-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 .end-score { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.75rem 0 0.25rem; }
 
@@ -427,8 +477,42 @@ body {
   color: var(--ink-dim);
 }
 
-.end-best { margin: 0; font-size: 0.875rem; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
-.end-best strong { color: var(--ink); }
+.end-bots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; width: 100%; max-width: 16rem; }
+
+/* Three states, told without a second hue: beaten rungs are tinted in the era's
+ * accent, the rung that ended the run is inverted, everything unmet stays dim. */
+.end-bot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: var(--plate);
+  color: var(--ink-dim);
+  opacity: 0.35;
+}
+
+.end-bot.is-beaten {
+  opacity: 1;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* Inverted: the era's own ink as ground, its field as the glyph. Contrast is
+ * guaranteed in every world because that pair is already the one the whole
+ * screen reads on — and no imported hue has to harmonise with ten palettes. */
+.end-bot.is-lost-to {
+  opacity: 1;
+  color: var(--field);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.end-bot .portrait { width: 1.75rem; height: 1.75rem; }
+
+/* Outside the card: the card is the thing you screenshot, the button is not. */
 .end-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
 
 /* ── Desktop ──────────────────────────────────────────────────────────────

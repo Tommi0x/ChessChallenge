@@ -12,12 +12,20 @@ import { createInitialGameState, PLAYER_CLOCK_MS } from './game/gameReducer';
 import type { GameStatus } from './game/gameReducer';
 import type { RunState, RunStatus } from './game/runReducer';
 import { createLocalStorageRunStore } from './persistence/runStore';
+import { createLocalStoragePersistenceAdapter } from './persistence/persistenceAdapter';
 import { OpponentPortrait } from './OpponentPortrait';
 import { useRun } from './useRun';
 import { DebugPanel } from './DebugPanel';
 import { stauntyPieces } from './stauntyPieces';
 
 const store = createLocalStorageRunStore();
+
+/** The name on the score card. Outlives the Run it was typed on, so a player who
+ *  climbs again is not asked who they are a second time. */
+const nameStore = createLocalStoragePersistenceAdapter(
+  'chesschallenge:player-name:v1',
+  (value): value is string => typeof value === 'string',
+);
 
 // Stripped from production by import.meta.env.DEV; also off under the test
 // runner (which sets DEV too) so the panel's own buttons don't collide with
@@ -110,19 +118,12 @@ export function ScorePop({ defeated, leaving }: { defeated: Defeated; leaving: b
   );
 }
 
-const END_COPY: Record<Exclude<RunStatus, 'playing'>, { headline: string; detail: (t: DifficultyTier) => string }> = {
-  lost: {
-    headline: 'The climb ends here.',
-    detail: (t) => `${t.name} was too much. One life, one ladder — that is the whole game.`,
-  },
-  drawn: {
-    headline: 'A draw ends it too.',
-    detail: (t) => `You held ${t.name} to a draw. Holding is not beating, and the run stops.`,
-  },
-  'ladder-complete': {
-    headline: 'You beat the Singularity.',
-    detail: () => 'Ten rungs, from a monkey to the thing that already knew how this ends. Nothing above you.',
-  },
+/** The card is a scoreboard, so the outcome is carried for screen readers only —
+ *  sighted players read it off the icon grid. */
+const END_LABEL: Record<Exclude<RunStatus, 'playing'>, string> = {
+  lost: 'Run over.',
+  drawn: 'Run over — drawn.',
+  'ladder-complete': 'Ladder complete.',
 };
 
 function App() {
@@ -136,6 +137,7 @@ function App() {
 
   const [started, setStarted] = useState(() => !isUntouched(run));
   const [leaving, setLeaving] = useState(false);
+  const [playerName, setPlayerName] = useState(() => nameStore.load() ?? '');
   const previous = useRef({ tierIndex: run.tierIndex, score: run.score });
 
   const tier = currentTier(run);
@@ -244,26 +246,48 @@ function App() {
 
   if (run.status !== 'playing') {
     const fell = DIFFICULTY_TIERS[run.tierIndex];
-    const copy = END_COPY[run.status];
-    const isBest = run.score > 0 && run.score >= run.bestScore;
+    // Ladder-complete never advances tierIndex past the last rung, but that
+    // last rung was beaten to get there; every other end status stops on the
+    // rung that beat the player, so only the rungs before it were beaten.
+    const beatenCount = run.status === 'ladder-complete' ? DIFFICULTY_TIERS.length : run.tierIndex;
     return (
       <main className="app" data-era={run.status === 'ladder-complete' ? 'blank' : fell.era}>
         <div className="end" role="alert">
-          <h1 className="end-headline">{copy.headline}</h1>
-          <p className="end-detail">{copy.detail(fell)}</p>
+          <p className="sr-only">{END_LABEL[run.status]}</p>
+          <p className="end-wordmark">ChessChallenge</p>
+          <input
+            className="end-name"
+            type="text"
+            value={playerName}
+            onChange={(e) => {
+              setPlayerName(e.target.value);
+              nameStore.save(e.target.value);
+            }}
+            placeholder="Your name"
+            aria-label="Your name"
+            maxLength={18}
+            autoComplete="name"
+            spellCheck={false}
+          />
+          <div className="end-bots" aria-hidden="true">
+            {DIFFICULTY_TIERS.map((t, i) => (
+              <div
+                key={t.name}
+                className={`end-bot${i < beatenCount ? ' is-beaten' : i === beatenCount ? ' is-lost-to' : ''}`}
+              >
+                <OpponentPortrait era={t.era} />
+              </div>
+            ))}
+          </div>
           <p className="end-score">
             <span className="end-score-value">{run.score.toLocaleString()}</span>
-            <span className="end-score-label">{isBest ? 'New best score' : 'Final score'}</span>
+            <span className="end-score-label">Score</span>
           </p>
-          <p className="end-best">
-            You reached rung <strong>{run.tierIndex + 1}</strong> of {DIFFICULTY_TIERS.length}
-            {!isBest && <> · Best: <strong>{run.bestScore.toLocaleString()}</strong></>}
-          </p>
-          <div className="end-actions">
-            <button type="button" className="btn" onClick={handleNewRun}>
-              Climb again
-            </button>
-          </div>
+        </div>
+        <div className="end-actions">
+          <button type="button" className="btn" onClick={handleNewRun}>
+            Climb again
+          </button>
         </div>
         {SHOW_DEBUG_PANEL && <DebugPanel />}
       </main>

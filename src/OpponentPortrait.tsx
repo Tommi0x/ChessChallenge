@@ -16,12 +16,16 @@ const PORTRAITS: Record<Era, React.ReactNode> = {
     <path d="M50.7 20.5v-4.4a2.2 2.2 0 0 0 -2.2 -2.2h-4.4a2.2 2.2 0 0 0 -2.2 2.2v4.4a20 20 0 0 1 -8.8 17.8c-4.4 2.9 -11 3.5 -15.4 3.5a4.4 4.4 0 0 0 -4.4 4.4a4.4 4.4 0 0 0 2.6 4c5.9 2.6 20.8 7.6 31.6 -3.7c9.9 -10.4 3.3 -26 3.3 -26" />
   ),
   // Meat on the bone: the one thing worth taking, cooked over someone else's fire.
+  // The only rung drawn on a 24-unit grid, so it is scaled up to fill the 64 box.
+  // Its stroke is pre-divided by that scale to land back on the shared 2 — never
+  // non-scaling-stroke, which pins the stroke to screen pixels and makes this the
+  // one icon that ignores how big it is being drawn.
   cave: (
-    <g transform="translate(6.6,5.3) scale(2.15)">
-      <path vectorEffect="non-scaling-stroke" d="M13.62 8.382l1.966 -1.967a2 2 0 1 1 3.414 -1.415a2 2 0 1 1 -1.413 3.414l-1.82 1.821" />
-      <path vectorEffect="non-scaling-stroke" d="M5.904 18.596c2.733 2.734 5.9 4 7.07 2.829c1.172 -1.172 -.094 -4.338 -2.828 -7.071c-2.733 -2.734 -5.9 -4 -7.07 -2.829c-1.172 1.172 .094 4.338 2.828 7.071" />
-      <path vectorEffect="non-scaling-stroke" d="M7.5 16l1 1" />
-      <path vectorEffect="non-scaling-stroke" d="M12.975 21.425c3.905 -3.906 4.855 -9.288 2.121 -12.021c-2.733 -2.734 -8.115 -1.784 -12.02 2.121" />
+    <g transform="translate(6.6,5.3) scale(2.15)" strokeWidth={2 / 2.15}>
+      <path d="M13.62 8.382l1.966 -1.967a2 2 0 1 1 3.414 -1.415a2 2 0 1 1 -1.413 3.414l-1.82 1.821" />
+      <path d="M5.904 18.596c2.733 2.734 5.9 4 7.07 2.829c1.172 -1.172 -.094 -4.338 -2.828 -7.071c-2.733 -2.734 -5.9 -4 -7.07 -2.829c-1.172 1.172 .094 4.338 2.828 7.071" />
+      <path d="M7.5 16l1 1" />
+      <path d="M12.975 21.425c3.905 -3.906 4.855 -9.288 2.121 -12.021c-2.733 -2.734 -8.115 -1.784 -12.02 2.121" />
     </g>
   ),
   // Fire: the first thing kept alive on purpose, and the first plan longer than a day.
