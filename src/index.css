@@ -42,29 +42,50 @@
 /* ── The ten eras ─────────────────────────────────────────────────────────── */
 
 [data-era='jungle'] {
-  --field: #102a1d; --ink: #e9f2e6; --ink-dim: #9db3a2; --accent: #d8a63c; --accent-ink: #0a1410;
-  --atmos: radial-gradient(105% 70% at 50% 0%, #17402c 0%, transparent 72%);
+  --field: #2b2008; --ink: #f5ecd6; --ink-dim: #b7a67e; --accent: #e0a83e; --accent-ink: #1c1406;
+  /* Hanging vines, uneven like a real canopy. */
+  --atmos:
+    repeating-linear-gradient(94deg, rgb(224 168 62 / 0.06) 0 2px, transparent 2px 22px),
+    repeating-linear-gradient(88deg, rgb(224 168 62 / 0.05) 0 1px, transparent 1px 37px),
+    radial-gradient(105% 70% at 50% 0%, #4a3712 0%, transparent 72%);
 }
 [data-era='cave'] {
   --field: #241408; --ink: #f2e6d6; --ink-dim: #b39d84; --accent: #d2542a; --accent-ink: #16110c;
-  --atmos: radial-gradient(80% 55% at 50% 104%, #55240f 0%, transparent 70%);
+  /* Rock strata, cut at an angle like a cave wall. */
+  --atmos:
+    repeating-linear-gradient(35deg, rgb(85 36 15 / 0.4) 0 2px, transparent 2px 11px),
+    radial-gradient(80% 55% at 50% 104%, #55240f 0%, transparent 70%);
 }
 [data-era='dawn'] {
   --field: #2b1a0c; --ink: #f7ead8; --ink-dim: #bda486; --accent: #e8a33d; --accent-ink: #1d150e;
-  --atmos: linear-gradient(180deg, #4a2c11 0%, transparent 58%);
+  /* Sunrise rays fanning up from the horizon. */
+  --atmos:
+    repeating-conic-gradient(from 205deg at 50% 100%, rgb(232 163 61 / 0.09) 0deg 3deg, transparent 3deg 15deg),
+    linear-gradient(180deg, #4a2c11 0%, transparent 58%);
 }
 [data-era='tavern'] {
   --field: #251708; --ink: #f0e2cf; --ink-dim: #b39b7d; --accent: #c98b3a; --accent-ink: #1a120c;
-  --atmos: radial-gradient(70% 50% at 18% 88%, #4a3012 0%, transparent 72%);
+  /* Wood-plank floorboards. */
+  --atmos:
+    repeating-linear-gradient(90deg, rgb(74 48 18 / 0.45) 0 3px, transparent 3px 28px),
+    radial-gradient(70% 50% at 18% 88%, #4a3012 0%, transparent 72%);
 }
 [data-era='club'] {
   --field: #12301f; --ink: #e6f0e6; --ink-dim: #93ab99; --accent: #c2a15a; --accent-ink: #0d1a12;
-  --atmos: radial-gradient(85% 55% at 50% 12%, #16402a 0%, transparent 70%);
+  /* Checkered like the board he plays on. */
+  --atmos:
+    repeating-linear-gradient(45deg, rgb(194 161 90 / 0.07) 0 7px, transparent 7px 14px),
+    repeating-linear-gradient(-45deg, rgb(194 161 90 / 0.07) 0 7px, transparent 7px 14px),
+    radial-gradient(85% 55% at 50% 12%, #16402a 0%, transparent 70%);
 }
 [data-era='hall'] {
   /* Lifted off #c8433f, which measured 3.6:1 here and failed the rank line. */
   --field: #181d28; --ink: #eef1f6; --ink-dim: #99a1b0; --accent: #ef6b64; --accent-ink: #12151b;
-  --atmos: linear-gradient(180deg, #232b3d 0%, transparent 62%);
+  /* Parquet lattice, befitting a hall. */
+  --atmos:
+    repeating-linear-gradient(60deg, rgb(239 107 100 / 0.05) 0 2px, transparent 2px 24px),
+    repeating-linear-gradient(-60deg, rgb(239 107 100 / 0.05) 0 2px, transparent 2px 24px),
+    linear-gradient(180deg, #232b3d 0%, transparent 62%);
 }
 [data-era='machine'] {
   --field: #0c180c; --ink: #d9f2d5; --ink-dim: #7fa87c; --accent: #4ade5a; --accent-ink: #0b0e0b;
@@ -81,16 +102,25 @@
 }
 [data-era='void'] {
   --field: #120824; --ink: #ede4f7; --ink-dim: #a48fbd; --accent: #d94fd0; --accent-ink: #0e0716;
+  /* A signal, pulsing outward from something that isn't a face. */
   --atmos:
+    repeating-radial-gradient(circle at 50% 42%, rgb(217 79 208 / 0.12) 0 1px, transparent 1px 26px),
     radial-gradient(140% 90% at 50% 50%, transparent 30%, #05010c 100%),
     radial-gradient(70% 55% at 50% 42%, #331155 0%, transparent 75%);
 }
-/* The last rung inverts: no colour, no atmosphere, nothing to hide behind.
- * The absence is the device. */
+/* The last rung inverts: no colour, nothing to hide behind. What atmosphere
+ * is left is lines converging on one point, like an event horizon. */
 [data-era='blank'] {
   --field: #f4f4f2; --ink: #0d0d0d; --ink-dim: #6b6b68; --accent: #0d0d0d; --accent-ink: #f4f4f2;
-  --atmos: none;
+  --atmos: repeating-conic-gradient(from 0deg at 50% 50%, rgb(13 13 13 / 0.035) 0deg 0.6deg, transparent 0.6deg 9deg);
   color-scheme: light;
+}
+
+/* The start screen isn't any opponent's era yet, so it gets its own: neutral
+ * space gray rather than borrowing the first rung's jungle palette. */
+[data-era='start'] {
+  --field: #3a3d42; --ink: #eef0f2; --ink-dim: #a7acb3; --accent: #8ea0b8; --accent-ink: #14161a;
+  --atmos: radial-gradient(90% 65% at 50% 0%, #4c5058 0%, transparent 72%);
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
@@ -175,13 +205,6 @@ body {
   line-height: 1.1;
 }
 
-.opponent-tagline {
-  margin: 0.25rem 0 0;
-  font-size: 0.875rem;
-  color: var(--ink-dim);
-  text-wrap: pretty;
-}
-
 .opponent-rank {
   display: flex;
   align-items: baseline;
@@ -238,7 +261,11 @@ body {
   letter-spacing: -0.02em;
 }
 
-.stat-value.is-urgent { color: var(--accent); }
+.stat-value.is-urgent { color: var(--accent); animation: clock-blink 1s step-start infinite; }
+
+@keyframes clock-blink {
+  50% { opacity: 0.25; }
+}
 
 .status-line {
   margin: 0;
@@ -289,8 +316,6 @@ body {
   text-wrap: balance;
 }
 
-.start-title span { display: block; color: var(--accent); }
-
 .start-blurb {
   margin: 0;
   max-width: 30rem;
@@ -298,30 +323,6 @@ body {
   color: var(--ink-dim);
   text-wrap: pretty;
 }
-
-.ladder {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.3rem 0.5rem;
-  max-width: 32rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.8125rem;
-  color: var(--ink-dim);
-}
-
-.ladder li { display: flex; align-items: center; gap: 0.5rem; }
-.ladder li::after {
-  content: '';
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--ink) 40%, transparent);
-}
-.ladder li:last-child::after { display: none; }
-.ladder li:last-child { color: var(--accent); font-weight: 600; }
 
 .start-note { margin: 0; font-size: 0.8125rem; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
 
@@ -444,7 +445,6 @@ body {
   .opponent { padding: 1.15rem 1.5rem; gap: 1.35rem; border-radius: 1rem; }
   .portrait { width: 4.75rem; height: 4.75rem; }
   .opponent-name { font-size: 1.875rem; }
-  .opponent-tagline { font-size: 0.9375rem; margin-top: 0.3rem; }
 
   .stats { gap: 0.5rem; }
   .stat { padding: 0.7rem 0.9rem; }

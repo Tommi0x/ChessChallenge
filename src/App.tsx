@@ -224,27 +224,18 @@ function App() {
 
   if (!started) {
     return (
-      <main className="app" data-era={DIFFICULTY_TIERS[0].era}>
+      <main className="app" data-era="start">
         <div className="start">
-          <h1 className="start-title">
-            Ten minds.
-            <span>One life.</span>
-          </h1>
-          <p className="start-blurb">
-            You are White, with five minutes on your clock. Beat an opponent and you climb; lose or
-            draw even once and the run is over. How far up you get is your score.
-          </p>
-          <ol className="ladder">
-            {DIFFICULTY_TIERS.map((t) => (
-              <li key={t.name}>{t.name}</li>
-            ))}
-          </ol>
-          <button type="button" className="btn" onClick={() => setStarted(true)}>
-            Face the Monkey
-          </button>
+          <h1 className="start-title">ChessChallenge</h1>
           {run.bestScore > 0 && (
-            <p className="start-note">Your best so far: {run.bestScore.toLocaleString()}</p>
+            <p className="stat">
+              <span className="stat-label">Best</span>
+              <span className="stat-value">{run.bestScore.toLocaleString()}</span>
+            </p>
           )}
+          <button type="button" className="btn" onClick={() => setStarted(true)}>
+            Start Challenge
+          </button>
         </div>
         {SHOW_DEBUG_PANEL && <DebugPanel />}
       </main>
@@ -290,10 +281,8 @@ function App() {
         <OpponentPortrait era={tier.era} />
         <div>
           <h1 className="opponent-name">{tier.name}</h1>
-          <p className="opponent-tagline">{tier.tagline}</p>
           <p className="opponent-rank">
-            <span>Rung {run.tierIndex + 1} / {DIFFICULTY_TIERS.length}</span>
-            <span>{tier.elo} Elo</span>
+            <span>Round {run.tierIndex + 1}</span>
           </p>
         </div>
       </section>
