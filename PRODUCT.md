@@ -29,7 +29,7 @@ Opened in a browser tab, desktop or phone, in short sittings. A Run may span a p
 - Ten Difficulty Tiers, 200–2000 Elo. The six rungs below Stockfish's `UCI_Elo` floor are approximated by starving search and mixing in random legal moves, so their Elo is an aim, not a measurement.
 - Score: `(tier number) × 100` per Game won, plus a curved bonus up to 50 for unspent clock. The speed bonus is deliberately worth less than one rung, so depth always outranks speed.
 - No backend, no accounts, no leaderboard. Best Score and Run State live in this browser's `localStorage` only (ADR 0002, 0003).
-- Domain vocabulary is fixed in `CONTEXT.md` — Run, Game, Ladder, Difficulty Tier, Score, Best Score, Run State, Bot. Use those words in UI copy.
+- UI copy uses the established terms Run, Game, Ladder, Difficulty Tier, Score, Best Score, Run State, and Bot consistently.
 - Stay fast and dependency-light: no new heavyweight dependencies, no analytics, no runtime network calls. Cold load must stay quick despite the WASM engine.
 - Mobile play is first-class: the board and stats must genuinely work on a phone in portrait, not merely reflow.
 

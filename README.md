@@ -24,7 +24,7 @@ npm run check
 - `src/App.tsx`: creates adapters and coordinates screens and celebrations.
 - `src/dev/`: development-only screen previews and controls. Preview runs never overwrite real Run State or Best Score; production ignores preview query parameters.
 
-Tests live beside the code they exercise. Tool installations under `.agents/` and `.claude/` are separate from the application and are excluded from project checks.
+Tests live beside the code they exercise.
 
 ## Persistence and clock
 
@@ -40,4 +40,4 @@ Vite emits relative asset URLs, so the same artifact works at `/ChessChallenge/`
 
 The piece SVGs and favicon are under `public/`; the display font is bundled under `src/fonts/`. All are used. Preserve upstream license notices when updating assets.
 
-See `CONTEXT.md` for domain vocabulary, `PRODUCT.md` for product constraints, `DESIGN.md` for design history, and `docs/adr/` for architecture decisions.
+See `PRODUCT.md` for product constraints and `docs/adr/` for architecture decisions.

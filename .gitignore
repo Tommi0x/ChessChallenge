@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local AI and design-tool state
+.agents/
+.claude/
+.impeccable/
+skills-lock.json
