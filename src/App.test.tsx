@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInitialRunState } from './game/runReducer';
 
@@ -6,7 +6,8 @@ vi.mock('./bot/stockfishBotAdapter', () => ({
   createStockfishBotAdapter: () => ({ getMove: vi.fn(() => new Promise(() => {})) }),
 }));
 
-import App, { ScorePop } from './App';
+import App from './App';
+import { ScorePop } from './components/ScorePop';
 import { DIFFICULTY_TIERS } from './game/ladder';
 
 const RUN_STATE_KEY = 'chesschallenge:run-state:v1';
@@ -238,4 +239,15 @@ describe('board click-to-move', () => {
     expect(pushStyle).toBeTruthy();
     expect(captureStyle).not.toBe(pushStyle);
   });
+});
+
+
+it('does not spend the clock on the start screen', () => {
+  vi.useFakeTimers();
+  render(<App />);
+  act(() => vi.advanceTimersByTime(60_000));
+  fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
+  expect(screen.getByText('5:00')).toBeInTheDocument();
+  cleanup();
+  vi.useRealTimers();
 });

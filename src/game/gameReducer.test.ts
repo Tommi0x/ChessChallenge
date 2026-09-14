@@ -151,3 +151,26 @@ describe('gameReducer', () => {
     expect(isGameState({ ...createInitialGameState(), clockMs: Infinity })).toBe(false);
   });
 });
+
+
+it('detects threefold repetition even after serialization between moves', () => {
+  let state = createInitialGameState();
+  const cycle = [['g1', 'f3'], ['g8', 'f6'], ['f3', 'g1'], ['f6', 'g8']];
+  for (const [from, to] of [...cycle, ...cycle]) {
+    state = gameReducer(JSON.parse(JSON.stringify(state)), { type: 'MOVE', from, to });
+  }
+  expect(state.status).toBe('draw');
+});
+
+it('rejects corrupted positions and inconsistent turns', () => {
+  expect(isGameState({ ...createInitialGameState(), fen: 'garbage' })).toBe(false);
+  expect(isGameState({ ...createInitialGameState(), turn: 'b' })).toBe(false);
+  expect(isGameState({ ...createInitialGameState(), positions: ['garbage'] })).toBe(false);
+});
+
+it('cannot play past the deadline between timer ticks', () => {
+  const state = { ...createInitialGameState(), clockMs: 500, lastTickAt: 1000 };
+  const next = gameReducer(state, { type: 'MOVE', from: 'e2', to: 'e4', now: 1600 });
+  expect(next.status).toBe('timeout');
+  expect(next.fen).toBe(state.fen);
+});

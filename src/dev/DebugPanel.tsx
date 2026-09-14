@@ -1,4 +1,4 @@
-import { DIFFICULTY_TIERS } from './game/ladder';
+import { DIFFICULTY_TIERS } from '../game/ladder';
 
 /**
  * Dev-only controls for jumping straight to any screen without playing to it

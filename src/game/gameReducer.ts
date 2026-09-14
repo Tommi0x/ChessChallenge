@@ -6,6 +6,8 @@ export type GameStatus = 'playing' | 'checkmate' | 'stalemate' | 'draw' | 'timeo
 
 export type GameState = {
   fen: string;
+  /** Positions since the last irreversible move, retained for threefold repetition. */
+  positions?: string[];
   turn: 'w' | 'b';
   status: GameStatus;
   winner: 'w' | 'b' | null;
@@ -20,8 +22,9 @@ export type GameState = {
 };
 
 export type GameEvent =
-  | { type: 'MOVE'; from: string; to: string; promotion?: string }
-  | { type: 'TICK'; now: number };
+  | { type: 'MOVE'; from: string; to: string; promotion?: string; now?: number }
+  | { type: 'TICK'; now: number }
+  | { type: 'PAUSE_CLOCK' };
 
 export function createInitialGameState(): GameState {
   return deriveState(new Chess(), PLAYER_CLOCK_MS);
@@ -29,6 +32,8 @@ export function createInitialGameState(): GameState {
 
 export function gameReducer(state: GameState, event: GameEvent): GameState {
   if (state.status !== 'playing') return state;
+
+  if (event.type === 'PAUSE_CLOCK') return state.lastTickAt === null ? state : { ...state, lastTickAt: null };
 
   if (event.type === 'TICK') {
     // Only the player's own clock runs, and only on the player's turn.
@@ -48,7 +53,15 @@ export function gameReducer(state: GameState, event: GameEvent): GameState {
   } catch {
     return state;
   }
-  return deriveState(chess, state.clockMs);
+  const billed = event.now === undefined ? state : gameReducer(state, { type: 'TICK', now: event.now });
+  if (billed.status === 'timeout') return billed;
+  const fen = chess.fen();
+  // Captures and pawn moves reset repetition history and keep snapshots bounded.
+  const positions = fen.split(' ')[4] === '0' ? [fen] : [...(state.positions ?? [state.fen]), fen];
+  const next = deriveState(chess, billed.clockMs);
+  const key = positionKey(fen);
+  const repeated = positions.filter((position) => positionKey(position) === key).length >= 3;
+  return { ...next, positions, ...(repeated ? { status: 'draw' as const, winner: null } : {}) };
 }
 
 const GAME_STATUSES: readonly GameStatus[] = ['playing', 'checkmate', 'stalemate', 'draw', 'timeout'];
@@ -56,18 +69,36 @@ const GAME_STATUSES: readonly GameStatus[] = ['playing', 'checkmate', 'stalemate
 export function isGameState(value: unknown): value is GameState {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
-  return (
+  const shapeValid = (
     typeof v.fen === 'string' &&
     (v.turn === 'w' || v.turn === 'b') &&
     GAME_STATUSES.includes(v.status as GameStatus) &&
     (v.winner === 'w' || v.winner === 'b' || v.winner === null) &&
     typeof v.clockMs === 'number' &&
     Number.isFinite(v.clockMs) &&
-    v.clockMs >= 0 &&
+    v.clockMs >= 0 && v.clockMs <= PLAYER_CLOCK_MS &&
     // Absent in saves written before the clock got an anchor; `runStore` nulls
     // it on the way in either way.
-    (v.lastTickAt === null || v.lastTickAt === undefined || typeof v.lastTickAt === 'number')
+    (v.lastTickAt === null || v.lastTickAt === undefined || (typeof v.lastTickAt === 'number' && Number.isFinite(v.lastTickAt)))
   );
+  if (!shapeValid) return false;
+  try {
+    if (new Chess(v.fen as string).turn() !== v.turn) return false;
+    if (v.positions !== undefined) {
+      if (!Array.isArray(v.positions) || v.positions.length > 101) return false;
+      for (const fen of v.positions) {
+        if (typeof fen !== 'string') return false;
+        new Chess(fen);
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function positionKey(fen: string): string {
+  return fen.split(' ').slice(0, 4).join(' ');
 }
 
 function deriveState(chess: Chess, clockMs: number): GameState {

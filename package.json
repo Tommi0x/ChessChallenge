@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "lint": "oxlint src vite.config.ts --deny-warnings",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc -b",
+    "check": "npm run lint && npm test && npm run build"
   },
   "dependencies": {
     "chess.js": "^1.4.0",
@@ -26,12 +28,11 @@
     "@vitejs/plugin-react": "^6.0.4",
     "jsdom": "^29.1.1",
     "oxlint": "^1.75.0",
-    "stockfish": "^18.0.8",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
     "vitest": "^4.1.11"
   },
-  "allowScripts": {
-    "stockfish@18.0.8": true
+  "engines": {
+    "node": "^22.13.0 || >=24.0.0"
   }
 }

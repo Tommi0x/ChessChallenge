@@ -1,4 +1,4 @@
-import type { Era } from './game/ladder';
+import type { Era } from '../game/ladder';
 
 /**
  * The ten opponents, drawn as one system: a 64x64 box, a 2px stroke in

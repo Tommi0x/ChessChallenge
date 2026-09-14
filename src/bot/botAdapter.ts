@@ -7,5 +7,7 @@ export type BotMove = {
 };
 
 export type BotAdapter = {
-  getMove(fen: string, tier: DifficultyTier): Promise<BotMove>;
+  /** Cancels pending work and releases the worker; reusable afterwards. */
+  dispose?(): void;
+  getMove(fen: string, tier: DifficultyTier, signal?: AbortSignal): Promise<BotMove>;
 };

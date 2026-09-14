@@ -19,72 +19,91 @@ function parseUciMove(uci: string): BotMove {
   };
 }
 
+/** The factory is pure: the worker is started only when the first move is requested.
+ * Cancelling a search terminates its worker because UCI replies carry no request ID. */
 export function createStockfishBotAdapter(): BotAdapter {
-  const worker = new Worker(`${import.meta.env.BASE_URL}stockfish/stockfish.js`);
-  let requestId = 0;
+  let worker: Worker | null = null;
+  let ready = false;
+  let cancelPending: (() => void) | null = null;
 
-  const ready = new Promise<void>((resolve) => {
-    function onMessage(event: MessageEvent<string>) {
-      if (event.data === 'uciok') {
-        worker.removeEventListener('message', onMessage);
-        resolve();
-      }
-    }
-    worker.addEventListener('message', onMessage);
-    worker.postMessage('uci');
-  });
+  function reset() {
+    worker?.terminate();
+    worker = null;
+    ready = false;
+  }
 
   return {
-    async getMove(fen, tier) {
-      await ready;
+    dispose() {
+      cancelPending?.();
+      reset();
+    },
+    getMove(fen, tier, signal) {
+      cancelPending?.();
+      if (signal?.aborted) return Promise.reject(new Error('Stockfish request cancelled'));
 
-      // Below the engine's UCI_Elo floor, a starved search still snaps up hanging
-      // pieces; the random move is what makes the low rungs feel like a beginner.
       if (tier.kind === 'starved' && Math.random() < tier.blunderChance) {
         const blunder = randomLegalMove(fen);
-        if (blunder) return blunder;
+        if (blunder) return Promise.resolve(blunder);
       }
 
-      const id = ++requestId;
-
       return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          cleanup();
-          reject(new Error('Stockfish did not respond in time'));
-        }, RESPONSE_TIMEOUT_MS);
-
+        let active: Worker;
+        try {
+          worker ??= new Worker(`${import.meta.env.BASE_URL}stockfish/stockfish.js`);
+          active = worker;
+        } catch (error) {
+          reject(error);
+          return;
+        }
+        let timeout: ReturnType<typeof setTimeout>;
         function cleanup() {
           clearTimeout(timeout);
-          worker.removeEventListener('message', onMessage);
-          worker.removeEventListener('error', onError);
+          active.removeEventListener('message', onMessage);
+          active.removeEventListener('error', onError);
+          signal?.removeEventListener('abort', cancel);
+          cancelPending = null;
         }
-
-        function onMessage(event: MessageEvent<string>) {
-          // A newer getMove() call superseded this one; let it own the response.
-          if (id !== requestId) {
-            cleanup();
-            return;
-          }
-          if (typeof event.data === 'string' && event.data.startsWith('bestmove')) {
-            cleanup();
-            resolve(parseUciMove(event.data.split(' ')[1]));
-          }
-        }
-
-        function onError(event: ErrorEvent) {
+        function fail(error: Error) {
           cleanup();
-          reject(event.error ?? new Error(event.message));
+          reset();
+          reject(error);
         }
-
-        worker.addEventListener('message', onMessage);
-        worker.addEventListener('error', onError);
-
-        // Skill Level stays at full; UCI_LimitStrength is what governs when it's on.
-        worker.postMessage('setoption name Skill Level value 20');
-        worker.postMessage(`setoption name UCI_LimitStrength value ${tier.kind === 'calibrated'}`);
-        if (tier.kind === 'calibrated') worker.postMessage(`setoption name UCI_Elo value ${tier.elo}`);
-        worker.postMessage(`position fen ${fen}`);
-        worker.postMessage(tier.kind === 'calibrated' ? `go movetime ${MOVE_TIME_MS}` : `go nodes ${tier.nodes}`);
+        function cancel() { fail(new Error('Stockfish request cancelled')); }
+        function search() {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => fail(new Error('Stockfish did not respond in time')), RESPONSE_TIMEOUT_MS);
+          active.postMessage('setoption name Skill Level value 20');
+          active.postMessage(`setoption name UCI_LimitStrength value ${tier.kind === 'calibrated'}`);
+          if (tier.kind === 'calibrated') active.postMessage(`setoption name UCI_Elo value ${tier.elo}`);
+          active.postMessage(`position fen ${fen}`);
+          active.postMessage(tier.kind === 'calibrated' ? `go movetime ${MOVE_TIME_MS}` : `go nodes ${tier.nodes}`);
+        }
+        function onMessage(event: MessageEvent<string>) {
+          if (event.data === 'uciok' && !ready) {
+            ready = true;
+            search();
+          } else if (ready && typeof event.data === 'string' && event.data.startsWith('bestmove')) {
+            const uci = event.data.split(' ')[1];
+            if (!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci ?? '')) {
+              fail(new Error('Stockfish returned an invalid move'));
+              return;
+            }
+            cleanup();
+            resolve(parseUciMove(uci));
+          }
+        }
+        function onError(event: ErrorEvent) {
+          fail(new Error(event.message || 'Stockfish failed to start'));
+        }
+        cancelPending = cancel;
+        active.addEventListener('message', onMessage);
+        active.addEventListener('error', onError);
+        signal?.addEventListener('abort', cancel);
+        if (ready) search();
+        else {
+          timeout = setTimeout(() => fail(new Error('Stockfish did not start in time')), 15_000);
+          active.postMessage('uci');
+        }
       });
     },
   };

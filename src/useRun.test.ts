@@ -113,7 +113,7 @@ describe('useRun', () => {
       vi.advanceTimersByTime(3000);
     });
 
-    expect(result.current.run.game.clockMs).toBe(PLAYER_CLOCK_MS - 3000);
+    expect(result.current.run.game.clockMs).toBe(PLAYER_CLOCK_MS - 4000);
   });
 
   it('stops the clock while the bot is thinking', () => {
@@ -171,7 +171,84 @@ describe('useRun', () => {
       result.current.newRun();
     });
 
-    expect(result.current.run).toEqual(createInitialRunState(9));
+    expect(result.current.run).toEqual({ ...createInitialRunState(9), game: { ...createInitialRunState().game, lastTickAt: expect.any(Number) } });
     expect(result.current.botError).toBeNull();
   });
+});
+
+
+describe('run lifecycle regressions', () => {
+  it('freezes an already running clock across a pause and rejects paused moves', () => {
+    vi.useFakeTimers();
+    const store = fakeStore();
+    const { result, rerender } = renderHook(({ paused }) => useRun(silentBot, store, paused), { initialProps: { paused: false } });
+    act(() => vi.advanceTimersByTime(2000));
+    rerender({ paused: true });
+    act(() => vi.advanceTimersByTime(30_000));
+    expect(result.current.onPieceDrop('e2', 'e4')).toBe(false);
+    rerender({ paused: false });
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.run.game.clockMs).toBe(PLAYER_CLOCK_MS - 3000);
+  });
+
+  it('does not bill time spent in a hidden document', () => {
+    vi.useFakeTimers();
+    const visibility = vi.spyOn(document, 'visibilityState', 'get');
+    visibility.mockReturnValue('visible');
+    const { result } = renderHook(() => useRun(silentBot, fakeStore()));
+    act(() => vi.advanceTimersByTime(2000));
+    visibility.mockReturnValue('hidden');
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    act(() => vi.advanceTimersByTime(30_000));
+    visibility.mockReturnValue('visible');
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.run.game.clockMs).toBe(PLAYER_CLOCK_MS - 3000);
+    visibility.mockRestore();
+  });
+
+  it('bills partial seconds at the time a player moves', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useRun(silentBot, fakeStore()));
+    act(() => vi.advanceTimersByTime(1500));
+    act(() => { result.current.onPieceDrop('e2', 'e4'); });
+    expect(result.current.run.game.clockMs).toBe(PLAYER_CLOCK_MS - 1500);
+  });
+
+  it('keeps the board callback stable on clock ticks', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useRun(silentBot, fakeStore()));
+    const before = result.current.onPieceDrop;
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.onPieceDrop).toBe(before);
+  });
+
+  it('retries a failed bot without restarting the run', async () => {
+    const getMove = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ from: 'e7', to: 'e5' });
+    const { result } = renderHook(() => useRun({ getMove }, fakeStore()));
+    act(() => { result.current.onPieceDrop('e2', 'e4'); });
+    await waitFor(() => expect(result.current.botError).toBe('offline'));
+    act(() => result.current.retryBot());
+    await waitFor(() => expect(result.current.run.game.turn).toBe('w'));
+    expect(result.current.botError).toBeNull();
+  });
+
+  it('aborts a bot request when a new run replaces it', () => {
+    const getMove = vi.fn(() => new Promise<BotMove>(() => {}));
+    const { result } = renderHook(() => useRun({ getMove }, fakeStore()));
+    act(() => { result.current.onPieceDrop('e2', 'e4'); });
+    const signal = (getMove.mock.calls[0] as unknown as [string, unknown, AbortSignal])[2];
+    act(() => result.current.newRun());
+    expect(signal.aborted).toBe(true);
+  });
+});
+
+
+it('keeps injected preview runs out of persistence', () => {
+  const store = fakeStore();
+  const preview = { ...createInitialRunState(), tierIndex: 9 };
+  const { result } = renderHook(() => useRun(silentBot, store, false, { initialRun: preview, persist: false }));
+  expect(result.current.run.tierIndex).toBe(9);
+  act(() => result.current.newRun());
+  expect(store.saves).toHaveLength(0);
 });

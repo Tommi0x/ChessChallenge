@@ -1,38 +1,11 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type { BotAdapter } from './bot/botAdapter';
-import { createInitialRunState, runReducer } from './game/runReducer';
-import type { RunState, RunStatus } from './game/runReducer';
+import { runReducer } from './game/runReducer';
+import type { RunState } from './game/runReducer';
 import type { RunStore } from './persistence/runStore';
-import { currentTier, DIFFICULTY_TIERS } from './game/ladder';
+import { currentTier } from './game/ladder';
 
 const TICK_MS = 1000;
-
-const DEBUG_STATUSES: readonly RunStatus[] = ['lost', 'drawn', 'ladder-complete'];
-
-/** `?tier=n` starts a throwaway Run on rung n, so any Bot can be seen without
- *  beating the ones below it. `?status=lost|drawn|ladder-complete` (optionally
- *  combined with `?tier=n`) fakes that Run's outcome directly, so every
- *  end-of-run screen can be previewed without actually winning or losing.
- *  Nothing else reads the query string. */
-function debugRunFromQuery(): RunState | null {
-  const params = new URLSearchParams(location.search);
-  const rawTier = params.get('tier');
-  const n = Number(rawTier);
-  const hasTier = rawTier !== null && Number.isInteger(n) && n >= 0 && n < DIFFICULTY_TIERS.length;
-  const status = params.get('status') as RunStatus | null;
-  if (!hasTier && status === null) return null;
-  if (status !== null && !DEBUG_STATUSES.includes(status)) return hasTier ? { ...createInitialRunState(), tierIndex: n } : null;
-
-  const tierIndex = status === 'ladder-complete' ? DIFFICULTY_TIERS.length - 1 : hasTier ? n : 0;
-  const run = { ...createInitialRunState(), tierIndex, score: (tierIndex + 1) * 100 };
-  if (status === null) return run;
-
-  const gameOutcome =
-    status === 'lost' ? { status: 'checkmate' as const, winner: 'b' as const } :
-    status === 'drawn' ? { status: 'draw' as const, winner: null } :
-    { status: 'checkmate' as const, winner: 'w' as const };
-  return { ...run, status, game: { ...run.game, ...gameOutcome } };
-}
 
 export type Run = {
   run: RunState;
@@ -40,6 +13,7 @@ export type Run = {
   /** Applies the player's move, or returns false if it would be illegal. */
   onPieceDrop(from: string, to: string): boolean;
   newRun(): void;
+  retryBot(): void;
 };
 
 /**
@@ -47,62 +21,81 @@ export type Run = {
  * the snapshot. `paused` stops the clock without touching the Run. The Bot and the store are arguments so a test can drive a whole
  * Run through this interface with fakes and no DOM.
  */
-export function useRun(bot: BotAdapter, store: RunStore, paused = false): Run {
-  // Captured once: a debug Run is fake from the moment it's requested, and
-  // must never overwrite the real saved Run or Best Score, however the query
-  // string changes (or a debug end screen advances) after that.
-  const [isDebugRun] = useState(() => debugRunFromQuery() !== null);
-  const [run, dispatch] = useReducer(runReducer, undefined, () => debugRunFromQuery() ?? store.load());
+export function useRun(bot: BotAdapter, store: RunStore, paused = false, { initialRun, persist = true }: { initialRun?: RunState; persist?: boolean } = {}): Run {
+  const [run, dispatch] = useReducer(runReducer, undefined, () => initialRun ?? store.load());
+  const [attempt, setAttempt] = useState(0);
   const [botError, setBotError] = useState<string | null>(null);
+
+  const latestRun = useRef(run);
+  useEffect(() => { latestRun.current = run; }, [run]);
 
   const { game } = run;
   const tier = currentTier(run);
 
   useEffect(() => {
-    if (isDebugRun) return;
+    if (!persist) return;
     store.save(run);
-  }, [run, store, isDebugRun]);
+  }, [run, store, persist]);
 
   useEffect(() => {
     if (game.status !== 'playing' || game.turn !== 'b') return;
 
-    let cancelled = false;
-    bot.getMove(game.fen, tier).then(
+    const controller = new AbortController();
+    bot.getMove(game.fen, tier, controller.signal).then(
       (move) => {
-        if (!cancelled) dispatch({ type: 'MOVE', ...move });
+        if (controller.signal.aborted) return;
+        const event = { type: 'MOVE', ...move } as const;
+        if (runReducer(latestRun.current, event) === latestRun.current) setBotError('The bot returned an illegal move.');
+        else dispatch(event);
       },
       (error: unknown) => {
-        if (!cancelled) setBotError(error instanceof Error ? error.message : 'The bot failed to move.');
+        if (!controller.signal.aborted) setBotError(error instanceof Error ? error.message : 'The bot failed to move.');
       },
     );
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [bot, game.fen, game.status, game.turn, tier]);
+  }, [bot, game.fen, game.status, game.turn, tier, attempt]);
 
   useEffect(() => {
     if (paused || game.status !== 'playing' || game.turn !== 'w') return;
-    // The reducer owns elapsed time; this only decides how often to ask.
-    //
-    // While paused, no TICK is dispatched at all. A Game that has just begun
-    // still carries a null `lastTickAt`, so the first TICK after the pause
-    // re-anchors and bills nothing — the player is never charged for time the
-    // interface spent celebrating.
-    const id = setInterval(() => dispatch({ type: 'TICK', now: Date.now() }), TICK_MS);
-    return () => clearInterval(id);
-  }, [game.status, game.turn, paused]);
+    // Anchor immediately, and stop charging while the document is hidden.
+    function tick() { dispatch({ type: 'TICK', now: Date.now() }); }
+    let id: ReturnType<typeof setInterval> | undefined;
+    function syncClock() {
+      clearInterval(id);
+      dispatch({ type: 'PAUSE_CLOCK' });
+      if (document.visibilityState !== 'hidden') {
+        tick();
+        id = setInterval(tick, TICK_MS);
+      }
+    }
+    syncClock();
+    document.addEventListener('visibilitychange', syncClock);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', syncClock);
+      dispatch({ type: 'PAUSE_CLOCK' });
+    };
+  }, [game.status, game.turn, paused, run.tierIndex]);
+
+  const onPieceDrop = useCallback((from: string, to: string) => {
+    const current = latestRun.current;
+    if (paused || current.game.status !== 'playing' || current.game.turn !== 'w') return false;
+    const move = { type: 'MOVE', from, to, promotion: 'q', now: Date.now() } as const;
+    if (runReducer(current, move) === current) return false;
+    dispatch(move);
+    return true;
+  }, [paused]);
 
   return {
     run,
     botError,
-    onPieceDrop(from, to) {
-      if (game.status !== 'playing' || game.turn !== 'w') return false;
-      const move = { type: 'MOVE', from, to, promotion: 'q' } as const;
-      // Dry-run first: an illegal drop must snap back rather than dispatch.
-      if (runReducer(run, move) === run) return false;
-      dispatch(move);
-      return true;
+    onPieceDrop,
+    retryBot() {
+      setBotError(null);
+      setAttempt((value) => value + 1);
     },
     newRun() {
       setBotError(null);

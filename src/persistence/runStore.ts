@@ -15,7 +15,7 @@ export type RunStore = {
 const RUN_STATE_KEY = 'chesschallenge:run-state:v1';
 const BEST_SCORE_KEY = 'chesschallenge:best-score:v1';
 
-const isNumber = (value: unknown): value is number => typeof value === 'number';
+const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 
 export function createLocalStorageRunStore(): RunStore {
   const runStateAdapter = createLocalStoragePersistenceAdapter<RunState>(RUN_STATE_KEY, isRunState);

@@ -104,3 +104,17 @@ describe('runStore', () => {
     expect(JSON.parse(localStorage.getItem(BEST_SCORE_KEY)!)).toBe(42);
   });
 });
+
+
+it.each([
+  { tierIndex: 1.5 }, { score: -1 }, { bestScore: -1 },
+  { game: { ...createInitialRunState().game, fen: 'invalid' } },
+])('discards a structurally corrupt snapshot: %j', (overrides) => {
+  localStorage.setItem(RUN_STATE_KEY, JSON.stringify({ ...createInitialRunState(), ...overrides }));
+  expect(createLocalStorageRunStore().load()).toEqual(createInitialRunState());
+});
+
+it('rejects a negative standalone best score', () => {
+  localStorage.setItem(BEST_SCORE_KEY, '-1');
+  expect(createLocalStorageRunStore().load().bestScore).toBe(0);
+});

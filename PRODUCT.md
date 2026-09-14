@@ -35,7 +35,7 @@ Opened in a browser tab, desktop or phone, in short sittings. A Run may span a p
 
 ## Evidence on Hand
 
-None. There are no users, ratings, testimonials, download counts, press, or benchmarks — do not invent any. The only real assets are `public/favicon.svg` and `public/icons.svg`.
+None. There are no users, ratings, testimonials, download counts, press, or benchmarks — do not invent any. The supplied assets include `public/favicon.svg`, the piece SVGs under `public/pieces/staunty/`, the bundled display font, and the vendored Stockfish runtime.
 
 ## Product Principles
 

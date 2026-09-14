@@ -29,7 +29,7 @@ The player's highest-ever Score, persisted in the browser's `localStorage`. Loca
 _Avoid_: High score, record
 
 **Run State**:
-A snapshot of the in-progress Run (current Difficulty Tier, board position, whose move it is, remaining clock time) written to `localStorage` after every move, so reloading the page resumes the Run rather than losing it. The clock freezes at its saved value while away — real-world time elapsed does not count against the player. Distinct from Best Score, which only records completed Runs.
+A snapshot of the in-progress Run (current Difficulty Tier, board position, whose move it is, remaining clock time) written to `localStorage` after every move, so reloading the page resumes the Run rather than losing it. The clock freezes at its saved value while away — real-world time elapsed does not count against the player. Distinct from Best Score, which updates after each won Game, including in-progress Runs.
 _Avoid_: Save, save file
 
 **Bot**:

@@ -22,8 +22,6 @@
 export type OpponentIdentity = {
   /** Display name, shown on the opponent plate above the board. */
   name: string;
-  /** One line of personality, shown under the name. */
-  tagline: string;
   /** Theme key: drives the era palette and the portrait. */
   era: Era;
 };
@@ -64,52 +62,42 @@ export const DIFFICULTY_TIERS: readonly DifficultyTier[] = [
   {
     kind: 'starved', elo: 200, nodes: 1, blunderChance: 0.5,
     name: 'The Monkey', era: 'jungle',
-    tagline: 'Moves pieces because they move. Has never once looked ahead.',
   },
   {
     kind: 'starved', elo: 400, nodes: 2, blunderChance: 0.35,
     name: 'The Neanderthal', era: 'cave',
-    tagline: 'Understands that taking things is good. Stops there.',
   },
   {
     kind: 'starved', elo: 600, nodes: 5, blunderChance: 0.25,
     name: 'Homo Sapiens', era: 'dawn',
-    tagline: 'Has discovered the plan. Cannot yet hold two of them.',
   },
   {
     kind: 'starved', elo: 800, nodes: 15, blunderChance: 0.15,
     name: 'The Village Player', era: 'tavern',
-    tagline: 'Beats everyone he knows. Knows about forty people.',
   },
   {
     kind: 'starved', elo: 1000, nodes: 50, blunderChance: 0.08,
     name: 'The Club Player', era: 'club',
-    tagline: 'Plays Tuesdays. Will punish exactly the mistakes he was taught.',
   },
   {
     kind: 'starved', elo: 1200, nodes: 200, blunderChance: 0.03,
     name: 'The Grandmaster', era: 'hall',
-    tagline: 'The strongest thing your species has to offer. It is not enough.',
   },
   {
     kind: 'calibrated', elo: 1400,
     name: 'The Computer', era: 'machine',
-    tagline: 'No fear, no fatigue, no idea what any of it means.',
   },
   {
     kind: 'calibrated', elo: 1600,
     name: 'The AI', era: 'network',
-    tagline: 'Was never taught the rules. Worked them out, then went further.',
   },
   {
     kind: 'calibrated', elo: 1800,
     name: 'The Alien', era: 'void',
-    tagline: 'Plays a game that resembles chess. It is not chess.',
   },
   {
     kind: 'calibrated', elo: 2000,
     name: 'The Singularity', era: 'blank',
-    tagline: 'Already knows how this ends. Is playing it out to be polite.',
   },
 ];
 
