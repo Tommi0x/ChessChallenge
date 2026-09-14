@@ -138,6 +138,8 @@ function App() {
   const [started, setStarted] = useState(() => !isUntouched(run));
   const [leaving, setLeaving] = useState(false);
   const [playerName, setPlayerName] = useState(() => nameStore.load() ?? '');
+  const [copied, setCopied] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const previous = useRef({ tierIndex: run.tierIndex, score: run.score });
 
   const tier = currentTier(run);
@@ -217,6 +219,40 @@ function App() {
     setSelectedSquare(clickedOwnPiece && square !== selectedSquare ? (square as Square) : null);
   }
 
+  /** Rasterises the score card so it can be pasted straight into a chat. The
+   *  card is translucent over the era's ground, so the ground is painted in
+   *  behind it — a PNG with a see-through middle reads as broken everywhere it
+   *  lands. */
+  async function copyCard() {
+    const card = cardRef.current;
+    if (!card) return;
+    const png = import('html-to-image').then(async (m) => {
+      const blob = await m.toBlob(card, {
+        pixelRatio: 2,
+        backgroundColor: getComputedStyle(card).getPropertyValue('--field').trim() || '#0a1410',
+      });
+      if (!blob) throw new Error('could not render the card');
+      return blob;
+    });
+
+    try {
+      // The Promise form rather than an awaited Blob: Safari discards a
+      // clipboard write whose user gesture has already ended, and rendering
+      // takes longer than the gesture does.
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // No image clipboard (Firefox until recently), or permission refused —
+      // hand over the file instead so the card is still shareable.
+      const blob = await png.catch(() => null);
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      Object.assign(document.createElement('a'), { href: url, download: 'chesschallenge.png' }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  }
+
   function handleNewRun() {
     setDefeated(null);
     previous.current = { tierIndex: 0, score: 0 };
@@ -252,7 +288,7 @@ function App() {
     const beatenCount = run.status === 'ladder-complete' ? DIFFICULTY_TIERS.length : run.tierIndex;
     return (
       <main className="app" data-era={run.status === 'ladder-complete' ? 'blank' : fell.era}>
-        <div className="end" role="alert">
+        <div className="end" role="alert" ref={cardRef}>
           <p className="sr-only">{END_LABEL[run.status]}</p>
           <p className="end-wordmark">ChessChallenge</p>
           <input
@@ -287,6 +323,9 @@ function App() {
         <div className="end-actions">
           <button type="button" className="btn" onClick={handleNewRun}>
             Climb again
+          </button>
+          <button type="button" className="btn btn-quiet" onClick={copyCard} aria-live="polite">
+            {copied ? 'Copied' : 'Copy card'}
           </button>
         </div>
         {SHOW_DEBUG_PANEL && <DebugPanel />}
