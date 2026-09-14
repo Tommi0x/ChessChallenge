@@ -30,8 +30,8 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument();
-    // The roster is deliberately not here: the start screen names no opponent.
-    expect(screen.queryByText('The Singularity')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Your opponents, from 200 to 2000 Elo')).toBeInTheDocument();
+    expect(screen.getByText('Best Score')).toBeInTheDocument();
     expect(screen.queryByText('Clock')).not.toBeInTheDocument();
   });
 
@@ -99,7 +99,7 @@ describe('App', () => {
     expect(screen.getByText('12')).toBeInTheDocument();
   });
 
-  it('returns to the first rung when a new run is started', () => {
+  it('returns to the start screen when a new run is started', () => {
     const initial = createInitialRunState();
     saveRun({
       status: 'lost',
@@ -110,8 +110,8 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Climb again' }));
 
-    expect(screen.getByRole('heading', { name: 'The Monkey' })).toBeInTheDocument();
-    expect(screen.getByText('Round 1')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'ChessChallenge' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument();
   });
 
   it('names the beaten opponent and what the rung paid', () => {

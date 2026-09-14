@@ -47,6 +47,22 @@ export function gamePoints(tierIndex: number, clockMs: number): number {
   return base + Math.round(MAX_SPEED_BONUS * unspent ** SPEED_CURVE_EXPONENT);
 }
 
+/**
+ * How many rungs the best Run beat, read back out of its Score alone.
+ *
+ * gamePoints caps the speed bonus below one rung's worth precisely so that the
+ * best possible run of n bots scores below the worst possible run of n + 1 — which
+ * makes this inverse exact, and means reach never has to be persisted alongside
+ * Best Score. It is the inverse of gamePoints, so it lives beside it: change
+ * TIER_BASE or MAX_SPEED_BONUS and this must be re-derived too.
+ */
+export function rungsBeaten(bestScore: number): number {
+  let rungs = 0;
+  // Base points for beating n rungs: 100 * (1 + 2 + ... + n) = 50n(n + 1).
+  while ((TIER_BASE * (rungs + 1) * (rungs + 2)) / 2 <= bestScore) rungs += 1;
+  return rungs;
+}
+
 const RUN_STATUSES: readonly RunStatus[] = ['playing', 'lost', 'drawn', 'ladder-complete'];
 
 export function isRunState(value: unknown): value is RunState {

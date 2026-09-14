@@ -36,6 +36,7 @@ const SCORE_POP_MS = 2400;
 const SCORE_POP_EXIT_MS = 420;
 const COUNT_UP_MS = 900;
 const URGENT_CLOCK_MS = 60_000;
+const START_BOARD_PIECES = ['♜', '♞', '♝', '♛', '♚', '♟'];
 
 const SELECTED_SQUARE_STYLE: CSSProperties = {
   backgroundColor: 'color-mix(in srgb, var(--accent) 45%, transparent)',
@@ -257,23 +258,47 @@ function App() {
     setDefeated(null);
     previous.current = { tierIndex: 0, score: 0 };
     newRun();
-    setStarted(true);
+    setStarted(false);
   }
 
   if (!started) {
     return (
-      <main className="app" data-era="start">
+      <main className="app app-start" data-era="start">
+        <div className="start-backdrop" aria-hidden="true">
+          {Array.from({ length: 64 }, (_, index) => (
+            <span
+              key={index}
+              className={(Math.floor(index / 8) + (index % 8)) % 2 === 0 ? 'is-dark' : ''}
+            >
+              {START_BOARD_PIECES[index % START_BOARD_PIECES.length]}
+            </span>
+          ))}
+        </div>
         <div className="start">
-          <h1 className="start-title">ChessChallenge</h1>
-          {run.bestScore > 0 && (
-            <p className="stat">
-              <span className="stat-label">Best</span>
-              <span className="stat-value">{run.bestScore.toLocaleString()}</span>
-            </p>
-          )}
-          <button type="button" className="btn" onClick={() => setStarted(true)}>
-            Start Challenge
-          </button>
+          <h1 className="start-title">
+            Chess<span>Challenge</span>
+          </h1>
+
+          <div className="start-bots" aria-label="Your opponents, from 200 to 2000 Elo">
+            {DIFFICULTY_TIERS.map((tier) => (
+              <div className="start-bot" key={tier.name} title={`${tier.name}, ${tier.elo} Elo`}>
+                <OpponentPortrait era={tier.era} />
+                <span className="sr-only">{tier.name}, {tier.elo} Elo</span>
+              </div>
+            ))}
+          </div>
+
+          <p className="stat start-best">
+            <span className="stat-label">Best Score</span>
+            <span className="stat-value">{run.bestScore.toLocaleString()}</span>
+          </p>
+
+          <div className="start-action">
+            <button type="button" className="btn start-button" onClick={() => setStarted(true)}>
+              Start Challenge
+            </button>
+            <p>Win to climb. A loss or draw ends your Run.</p>
+          </div>
         </div>
         {SHOW_DEBUG_PANEL && <DebugPanel />}
       </main>

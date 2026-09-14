@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createInitialRunState, gamePoints, isRunState, runReducer, type RunState } from './runReducer';
+import { createInitialRunState, gamePoints, isRunState, runReducer, rungsBeaten, type RunState } from './runReducer';
 import { currentTier, DIFFICULTY_TIERS } from './ladder';
 import { createInitialGameState, PLAYER_CLOCK_MS } from './gameReducer';
 
@@ -214,5 +214,27 @@ describe('runReducer', () => {
     expect(
       isRunState({ ...playing, game: { ...playing.game, status: 'timeout', winner: 'b' } }),
     ).toBe(false);
+  });
+});
+
+describe('rungsBeaten', () => {
+  it('reads no rungs out of a Score nobody has scored', () => {
+    expect(rungsBeaten(0)).toBe(0);
+    expect(rungsBeaten(99)).toBe(0);
+  });
+
+  // The guarantee that makes the inverse exact: the best possible run of n rungs
+  // scores below the worst possible run of n + 1, so no Score is ambiguous. If
+  // this fails, the speed bonus has grown past one rung's worth.
+  it('recovers the rung count from every Score the ladder can produce', () => {
+    for (let rungs = 1; rungs <= DIFFICULTY_TIERS.length; rungs += 1) {
+      const slowest = Array.from({ length: rungs }, (_, i) => gamePoints(i, 0)).reduce((a, b) => a + b);
+      const fastest = Array.from({ length: rungs }, (_, i) => gamePoints(i, PLAYER_CLOCK_MS)).reduce((a, b) => a + b);
+
+      expect(rungsBeaten(slowest)).toBe(rungs);
+      expect(rungsBeaten(fastest)).toBe(rungs);
+      // Nothing in between is ambiguous either.
+      expect(rungsBeaten(Math.round((slowest + fastest) / 2))).toBe(rungs);
+    }
   });
 });

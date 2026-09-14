@@ -118,20 +118,27 @@
 
 /* The start screen isn't any opponent's era yet, so it gets its own: neutral
  * space gray rather than borrowing the first rung's jungle palette. */
+/* This era is a light gray ground, so the ~0.04 luminance ceiling above cannot
+ * apply literally — #3a3d42 alone measures 0.046. What the ceiling exists to
+ * guarantee still holds and is what was measured here: --ink-dim keeps 4.79:1
+ * over the gradient's brightest point and 4.59:1 over the plate. Retune either
+ * value and re-measure both. */
 [data-era='start'] {
-  --field: #3a3d42; --ink: #eef0f2; --ink-dim: #a7acb3; --accent: #8ea0b8; --accent-ink: #14161a;
-  --atmos: radial-gradient(90% 65% at 50% 0%, #4c5058 0%, transparent 72%);
+  --field: #3a3d42; --ink: #eef0f2; --ink-dim: #b8bdc4; --accent: #b9c8de; --accent-ink: #14161a;
+  --atmos: radial-gradient(90% 65% at 50% 0%, #454850 0%, transparent 72%);
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
 
 * { box-sizing: border-box; }
 
+/* Only ever seen behind an overscroll bounce or before the shell paints, so it
+ * matches the climb's own base rather than any one era's ground. */
 body {
   margin: 0;
   min-height: 100dvh;
-  background: #0a1410;
-  color: #e9f2e6;
+  background: #07080a;
+  color: #eef0f2;
 }
 
 #root { min-height: 100dvh; }
@@ -245,6 +252,7 @@ body {
 .stats { display: flex; gap: 0.4rem; width: var(--board-size); }
 
 .stat {
+  margin: 0;
   flex: 1;
   padding: 0.55rem 0.7rem;
   background: var(--plate);
@@ -307,28 +315,407 @@ body {
  * without competing with it. */
 .btn-quiet { color: var(--ink); background: var(--plate); border: 1px solid var(--edge); }
 
+/* The global ring is var(--accent); on an accent-filled button that is 1:1
+ * against the fill and reads as the button growing rather than as focus. */
+.btn:focus-visible { outline-color: var(--ink); }
+
 .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
 .btn:active { transform: translateY(0); }
 
-/* ── Start screen ─────────────────────────────────────────────────────────── */
+/* ── Start screen: The Climb ──────────────────────────────────────────────
+ * The screen does not show the ladder, it is the ladder. Ten full-width bands
+ * stand floor to ceiling, rung 1 at your feet and the white room at the top.
+ *
+ * Full width is the whole point. Every --atmos is a set of 1-3px repeating
+ * stripes drawn for a full-screen shell; the previous design rendered them into
+ * 101px tiles, a tenth of their intended scale, where they aliased into moire
+ * and read as a low-quality screenshot. At band width they render exactly as
+ * authored.
+ *
+ * The horizon is the top edge of the first rung not yet beaten: lit below,
+ * scrimmed above. Unlit is designed, not absent — a dark rung keeps its own
+ * texture under the scrim instead of being deleted.
+ */
+
+/* Two classes deliberately: the desktop breakpoint later in this file sets
+ * .app { padding-block: 2rem }, and on equal specificity that would win on
+ * source order — adding 64px to a child already sized 100dvh and pushing the
+ * entrance below the fold. Specificity settles it wherever the rule sits. */
+.app.app-climb {
+  justify-content: flex-start;
+  gap: 0;
+  padding: 0;
+  background: #07080a;
+}
+
+.climb {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  /* Reversed, so DOM order climbs: rung 1 is the first child and sits on the
+   * floor, and the load stagger reads as an ascent rather than a fall. */
+  flex-direction: column-reverse;
+  transform-origin: 50% 100%;
+  transition: transform 600ms var(--ease-out);
+}
+
+/* Lit rungs stand taller than dark ones, so the ground you have actually taken
+ * owns more of the screen than the climb you have not. It gives a first arrival
+ * a real floor to stand on instead of one tenth of a black screen, and it means
+ * the composition visibly grows into the viewport as a player climbs. */
+.rung {
+  position: relative;
+  flex: 1 1 0;
+  overflow: hidden;
+  transition: flex-grow 900ms var(--ease-out);
+  /* The atmosphere is painted on the band itself and never moves. Several eras
+   * carry 1-2px hairline gradients, and translating those by fractional offsets
+   * resamples them every frame — the exact shimmer this redesign exists to end.
+   * Full width already renders them at authored scale; keeping them still is
+   * what keeps them clean. Motion lives on ::before instead. */
+  background: var(--atmos, none), var(--field);
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.06);
+  animation: rung-rise 700ms var(--ease-out) both;
+  animation-delay: calc(var(--i) * 60ms);
+}
+
+/* The moving light: one broad wash in the era's own accent, and deliberately
+ * nothing else. A smooth gradient has no high-frequency detail to resample, so
+ * it can drift forever without shimmering. Transform on a pseudo-element stays
+ * on the compositor, so ten simultaneous drifts cost no repaints, and the
+ * negative per-band delay desynchronises them without ten keyframe sets. */
+.rung::before {
+  content: '';
+  position: absolute;
+  inset: -40% -25%;
+  background: radial-gradient(
+    50% 120% at 35% 50%,
+    color-mix(in srgb, var(--accent) 22%, transparent) 0%,
+    transparent 70%
+  );
+  animation: drift 38s linear infinite alternate;
+  animation-delay: calc(var(--i) * -3.8s);
+}
+
+/* Unlit is designed, not absent. The scrim is deliberately light enough that
+ * every band keeps its own texture and a readable edge: what sells the rungs
+ * you have not reached is atmospheric perspective, not black paint. */
+.rung::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(7 8 10 / 0.5);
+  transition: opacity 900ms var(--ease-out);
+}
+
+/* Distance: colour drains and cools with altitude the way it does over real
+ * ground, so the climb ahead reads as far away rather than as switched off. */
+.rung:not(.is-lit):not(.is-horizon) { filter: saturate(0.38); }
+
+.rung.is-lit,
+.rung.is-horizon { flex-grow: 1.75; }
+
+.rung.is-lit::after { opacity: 0; }
+.rung.is-horizon::after { opacity: 0.16; }
+
+/* The horizon itself: how far the best Run reached, drawn as the lit edge. */
+.rung.is-horizon { box-shadow: inset 0 1px 0 0 var(--accent); }
+
+.rung-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(100% - 2rem, 34rem);
+  height: 100%;
+  margin: 0 auto;
+  /* 0.88, not lower: at 0.78 the dimmest era's Elo composites to 4.35:1 over
+   * its own scrimmed field, under the 4.5 floor. The band's desaturation and
+   * scrim already carry the lit/unlit distinction without dimming the text. */
+  opacity: 0.88;
+  transition: opacity 900ms var(--ease-out);
+}
+
+.rung.is-lit .rung-inner,
+.rung.is-horizon .rung-inner { opacity: 1; }
+
+/* Snapped, not fluid. The glyphs are a 2-unit stroke on a 64 viewBox, so the
+ * rendered stroke is size/32 — only whole multiples of 32px put it on a whole
+ * pixel. A clamp between them lands on 1.24px and goes soft, which is the
+ * complaint that started this redesign, so the size steps instead of scaling. */
+.rung .portrait { width: 32px; height: 32px; }
+
+/* The Singularity is the one inverted era: a near-white ground with a mid-gray
+ * ink-dim. Under the scrim that ground lands on mid-gray too and the label
+ * disappears into it (1.27:1). Its near-black ink is the only value that holds
+ * across all three states — and it needs full opacity, because compositing it
+ * at 0.88 lifts it off black and drops the scrimmed case back to 4.26:1. */
+.rung[data-era='blank'] .rung-elo { color: var(--ink); }
+.rung[data-era='blank'] .rung-inner { opacity: 1; }
+
+.rung-elo {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+/* The top of the climb is in shadow. Thematically it is the part you have not
+ * reached; practically it is what holds the title legible over whichever rungs
+ * happen to be lit beneath it — including the white Singularity band, which is
+ * the worst case and the one this gradient is tuned against. */
+.climb-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgb(7 8 10 / 0.72) 0%, rgb(7 8 10 / 0.26) 38%, transparent 64%);
+}
 
 .start {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.25rem;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: 100%;
   max-width: 34rem;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 6vh, 3.5rem) 1rem 0;
   text-align: center;
 }
 
 .start-title {
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(2.75rem, 13vw, 5rem);
+  font-size: clamp(2.75rem, min(16vw, 13vh), 5rem);
   font-weight: 800;
   letter-spacing: -0.045em;
   line-height: 0.92;
-  text-wrap: balance;
+}
+
+.start-title span { display: block; color: var(--accent); }
+
+.start-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* Not a pill, and not a wide pill either: the floor of the climb. It breaks the
+ * column to span the viewport, squares off its corners so it reads as ground
+ * rather than as a control, and wears rung 1's own palette — the door is the
+ * colour of the room behind it. Its content sits on the same measure as every
+ * rung above, so the door lines up with the rooms. */
+.enter {
+  display: block;
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  padding: 1rem 0 1.15rem;
+  font: inherit;
+  text-align: left;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.enter-inner {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  width: min(100% - 2rem, 34rem);
+  margin: 0 auto;
+}
+
+.enter .portrait { width: 32px; height: 32px; color: currentColor; }
+
+.enter-text { display: grid; gap: 0.15rem; }
+
+.enter-label {
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.enter-note {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.78;
+}
+
+.enter-elo {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.78;
+}
+
+/* The ring never sits on the fill it rings, and never leaves the viewport:
+ * inset, because the plate is flush to three edges. */
+.enter:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -5px; }
+
+/* Signature interaction: reaching for the door makes the climb loom, and the
+ * room behind the door warms as it opens. Scaling from the floor rather than
+ * translating means no gap opens at the bottom. */
+.app-climb:has(.enter:hover) .climb,
+.app-climb:has(.enter:focus-visible) .climb { transform: scale(1.018); }
+
+.rung:first-child { transition: filter 400ms var(--ease-out); }
+
+.app-climb:has(.enter:hover) .rung:first-child,
+.app-climb:has(.enter:focus-visible) .rung:first-child { filter: brightness(1.2); }
+
+@keyframes rung-rise {
+  from { opacity: 0; transform: translateY(1.5rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes drift {
+  from { transform: translate3d(-3.5%, -2.5%, 0); }
+  to   { transform: translate3d(3.5%, 2.5%, 0); }
+}
+
+/* ── Start screen ────────────────────────────────────────────────────────── */
+
+.app-start {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-block: clamp(1.5rem, 5vw, 3rem);
+  background: var(--field);
+}
+
+.start-backdrop {
+  position: absolute;
+  inset: -4%;
+  z-index: -1;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  opacity: 0.32;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.start-backdrop span {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-family: Georgia, serif;
+  font-size: clamp(1.25rem, 2.6vw, 2.5rem);
+  line-height: 1;
+  color: color-mix(in srgb, var(--accent) 32%, var(--field));
+  background: color-mix(in srgb, var(--field) 92%, #000);
+}
+
+.start-backdrop span.is-dark {
+  color: color-mix(in srgb, var(--accent) 42%, var(--field));
+  background: color-mix(in srgb, var(--field) 84%, #000);
+}
+
+.start {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  justify-content: initial;
+  gap: clamp(1rem, 3vw, 1.75rem);
+  width: min(100%, 34rem);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+.start-title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(3.75rem, 16vw, 6.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.start-title span { display: block; color: var(--accent); }
+
+.start-bots {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.35rem;
+  width: 100%;
+  padding: clamp(1rem, 4vw, 1.5rem);
+  background: color-mix(in srgb, var(--field) 76%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--edge));
+  border-radius: 1rem;
+  box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 0.18);
+  backdrop-filter: blur(8px);
+}
+
+.start-bot {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 1;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+.start-bot .portrait { width: min(100%, 2.8rem); height: min(100%, 2.8rem); }
+
+.start-best {
+  width: 100%;
+  max-width: 36rem;
+  padding-block: 0.85rem;
+  background: color-mix(in srgb, var(--field) 76%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--edge));
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+.start-best .stat-value { font-size: clamp(1.5rem, 6vw, 2rem); }
+
+.start-action { display: grid; gap: 0.7rem; width: 100%; }
+
+.start-button {
+  width: min(100%, 32rem);
+  justify-self: center;
+  padding-block: 1rem;
+  font-size: 1rem;
+  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 0.25);
+}
+
+.start-action p {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink-dim);
+}
+
+@media (max-width: 420px) {
+  .app-start { padding-inline: 0.75rem; }
+  .start { gap: 0.9rem; }
+  .start-bots { gap: 0.25rem; padding: 0.75rem; }
+  .start-bot .portrait { width: min(100%, 2.25rem); height: min(100%, 2.25rem); }
 }
 
 /* ── Score pop — the authored moment ──────────────────────────────────────── */
@@ -528,7 +915,28 @@ body {
   .stat { padding: 0.7rem 0.9rem; }
   .stat-value { font-size: 1.375rem; }
 
-  .start-title { font-size: 5.5rem; }
+  /* Guarded on height too: unguarded, a 1024x600 window gets an 88px title
+   * and the clamp's whole purpose is defeated. */
+  .start-title { font-size: clamp(2.75rem, min(16vw, 13vh), 5.5rem); }
+}
+
+/* ── Short viewports ──────────────────────────────────────────────────────
+ * A landscape phone has width to spare and no height at all. The ladder turns
+ * tightens so the title, the Best plate and the floor all still fit. The climb
+ * itself needs no help: it is sized to the viewport by construction. */
+
+@media (max-height: 560px) {
+  .start { gap: 0.75rem; }
+  .stat-solo { padding: 0.35rem 0.7rem; }
+  .enter { padding: 0.7rem 1.25rem; }
+  .enter-label { font-size: 1.1rem; }
+}
+
+/* Below this a band is thin enough that the 2px-on-64 stroke lands under one
+ * device pixel and the glyph goes soft. The Elo still carries the ladder. */
+@media (max-height: 460px) {
+  .rung .portrait { display: none; }
+  .rung-inner { justify-content: flex-end; }
 }
 
 /* ── Reduced motion ───────────────────────────────────────────────────────── */
@@ -539,6 +947,10 @@ body {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    /* Without this a staggered animation still waits out its delay, so the ten
+     * climb bands snap in one at a time over 540ms — a flash sequence, which is
+     * the thing this media query exists to prevent. */
+    animation-delay: 0s !important;
     transition-duration: 0.01ms !important;
   }
 
